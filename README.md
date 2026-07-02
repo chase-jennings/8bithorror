@@ -1,6 +1,6 @@
 # 🕯️ RUN, CHASE, RUN!
 
-*A 16-bit horror side-scroller developed by **Chase Jennings**. The Grave King has stolen Princess Leah — run the haunted graveyard, with your black German Shepherd at your side, and bring your bride home.*
+*A 16-bit horror side-scroller developed by **Chase Jennings**. The Grave King has stolen Leah — run the haunted graveyard, with your black German Shepherd at your side, and bring your bride home.*
 
 One HTML file. No dependencies, no build step. Runs in any browser and is built for phones.
 
@@ -34,8 +34,8 @@ python3 -m http.server 8000
 
 ## 💀 How to survive
 
-- **Rescue Princess Leah** — she's held at the crypt door at the far end of the graveyard.
-- **Stomp zombies and bats** — jump on their heads, classic style — or **burn them with fireballs**.
+- **Rescue Leah** — she's held at the crypt door at the far end of the graveyard.
+- **Stomp zombies and flying eyeballs** — jump on their heads, classic style — or **burn them with fireballs**.
 - **Watch the ceilings.** Spiders drop down on silk threads when you walk under them.
 - **Never turn your back on a ghost.** It only drifts toward you while you're facing away. Stare it down and it fades back into the dark.
 - **Trust your dog.** He runs at your side, and he **barks (!)** when a ghost is hunting you from behind.
@@ -52,7 +52,8 @@ You have 3 hearts. The graveyard is patient.
 ## 🔧 Tech
 
 - Single-file HTML5 canvas game at a 320×192 internal resolution, integer-scaled with `image-rendering: pixelated` for crisp pixels
-- All sprites drawn in code (pixel-map strings) in a 16-bit style — Chase (with his leather pack strap and jeans), Princess Leah (lace gown, bouquet, tattoo sleeve), werewolf Chase, the dog, and the Grave King — plus a tiny 3×5 bitmap font, procedural cobblestone tiles, and a distant castle with lit windows
+- All sprites drawn in code (pixel-map strings) in a 16-bit style — Chase (with his leather pack strap and jeans), Leah (lace gown, bouquet, tattoo sleeve), werewolf Chase, the dog, and the Grave King — plus a tiny 3×5 bitmap font, procedural cobblestone tiles, and a distant castle with lit windows
 - Opening cutscene: the Grave King snatches Leah away before the level begins (tap to skip)
-- **Looping 8-bit horror soundtrack**: a D-minor chiptune sequenced live through WebAudio (square lead, triangle bass, noise hats) plus an ambient drone — zero audio files
-- Companion-dog AI (follows, hops gaps, warns of ghosts), multi-touch on-screen controls, jump buffering + coyote time, parallax night sky, drifting fog, lightning, and a lantern-glow darkness vignette
+- Adaptive viewport: the view expands to fill any phone edge-to-edge at a fixed pixel zoom
+- **Three-track chiptune soundtrack**, sequenced live through WebAudio (zero audio files): a D-minor graveyard waltz, a fast action riff while you're the werewolf, and a bright D-major victory tune when Leah is rescued
+- Companion-dog AI (follows, hops gaps, warns of ghosts), multi-touch on-screen controls, jump buffering + coyote time, parallax night sky with towering peaks and a distant lit castle, drifting fog, and lightning
