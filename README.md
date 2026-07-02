@@ -1,10 +1,10 @@
-# 🕯️ GRAVE CHASE
+# 🕯️ RUN, CHASE, RUN!
 
-*A spooky 8-bit side-scroller starring **Chase Jennings** — and his faithful black German Shepherd.*
+*A 16-bit horror side-scroller developed by **Chase Jennings**. The Grave King has stolen Princess Leah — run the haunted graveyard, with your black German Shepherd at your side, and bring your bride home.*
 
 One HTML file. No dependencies, no build step. Runs in any browser and is built for phones.
 
-![genre](https://img.shields.io/badge/genre-8--bit%20horror-purple) ![deps](https://img.shields.io/badge/dependencies-none-green)
+![genre](https://img.shields.io/badge/genre-16--bit%20horror-purple) ![deps](https://img.shields.io/badge/dependencies-none-green)
 
 ## ▶️ Play it
 
@@ -30,10 +30,13 @@ python3 -m http.server 8000
 |---|---|
 | ◀ ▶ buttons — move | Arrow keys / A & D |
 | JUMP button | Space / W / Up |
+| FIRE button — fireball | X / F / J |
 
 ## 💀 How to survive
 
-- **Stomp zombies and bats** — jump on their heads, classic style.
+- **Rescue Princess Leah** — she's held at the crypt door at the far end of the graveyard.
+- **Stomp zombies and bats** — jump on their heads, classic style — or **burn them with fireballs**.
+- **Watch the ceilings.** Spiders drop down on silk threads when you walk under them.
 - **Never turn your back on a ghost.** It only drifts toward you while you're facing away. Stare it down and it fades back into the dark.
 - **Trust your dog.** He runs at your side, and he **barks (!)** when a ghost is hunting you from behind.
 - **🌙 Moon totem** — transform into a **tall werewolf**: faster, higher jumps, and everything you touch is shredded — *even ghosts*.
@@ -42,13 +45,13 @@ python3 -m http.server 8000
 - **Candles are souls.** Collect 10 and a heart comes back.
 - **Skull blocks** hide souls — bump them from below. Bricks smash.
 - Spikes and pits send you back to the last **lantern checkpoint**.
-- Reach the **glowing crypt door** at the far end of the graveyard to escape.
 
 You have 3 hearts. The graveyard is patient.
 
 ## 🔧 Tech
 
-- Single-file HTML5 canvas game at a true 320×192 internal resolution, integer-scaled with `image-rendering: pixelated` for chunky pixels
-- All sprites drawn in code (pixel-map strings) — including 8-bit Chase, werewolf Chase, and the dog — tiny 3×5 bitmap font, procedural tiles
+- Single-file HTML5 canvas game at a 320×192 internal resolution, integer-scaled with `image-rendering: pixelated` for crisp pixels
+- All sprites drawn in code (pixel-map strings) in a 16-bit style — Chase (with his leather pack strap and jeans), Princess Leah (lace gown, bouquet, tattoo sleeve), werewolf Chase, the dog, and the Grave King — plus a tiny 3×5 bitmap font, procedural cobblestone tiles, and a distant castle with lit windows
+- Opening cutscene: the Grave King snatches Leah away before the level begins (tap to skip)
 - **Looping 8-bit horror soundtrack**: a D-minor chiptune sequenced live through WebAudio (square lead, triangle bass, noise hats) plus an ambient drone — zero audio files
 - Companion-dog AI (follows, hops gaps, warns of ghosts), multi-touch on-screen controls, jump buffering + coyote time, parallax night sky, drifting fog, lightning, and a lantern-glow darkness vignette
