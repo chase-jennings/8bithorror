@@ -29,7 +29,7 @@ python3 -m http.server 8000
 | Phone | Keyboard |
 |---|---|
 | **Drag your thumb** left/right on the left half of the screen — move | Arrow keys / A & D |
-| JUMP button | Space / W / Up |
+| JUMP button, or tap the right half of the screen | Space / W / Up |
 | FIRE button — fireball | X / F / J |
 
 ## 💀 How to survive

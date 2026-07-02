@@ -25,6 +25,7 @@
     image-rendering:pixelated;
     image-rendering:crisp-edges;
     background:#05010d;
+    touch-action:none;
   }
   /* subtle CRT scanlines over everything */
   #crt {
@@ -123,7 +124,14 @@ const ctx = view.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
 let scale = 1, offX = 0, offY = 0;
+let fitSig = '';
+function viewportSig() {
+  const vv = window.visualViewport;
+  return window.innerWidth + 'x' + window.innerHeight +
+         (vv ? '/' + Math.round(vv.width) + 'x' + Math.round(vv.height) + '@' + vv.scale.toFixed(2) : '');
+}
 function fit() {
+  fitSig = viewportSig();
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
   const w = window.innerWidth, h = window.innerHeight;
   screen.width  = Math.round(w * dpr);
@@ -143,6 +151,15 @@ function fit() {
 }
 window.addEventListener('resize', fit);
 window.addEventListener('orientationchange', () => setTimeout(fit, 100));
+window.addEventListener('pageshow', fit);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', fit);
+  window.visualViewport.addEventListener('scroll', fit);
+}
+// iOS: block pinch-zoom on the game entirely — zooming desyncs the
+// canvas and the touch controls
+document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('gesturechange', e => e.preventDefault());
 fit();
 
 //------------------------------------------------ tiny 3x5 pixel font
@@ -1076,12 +1093,12 @@ window.addEventListener('keyup', e => { keys[e.code] = false; });
 function pollKeys() {
   const kb = ((keys.ArrowRight || keys.KeyD) ? 1 : 0) - ((keys.ArrowLeft || keys.KeyA) ? 1 : 0);
   input.axis = kb !== 0 ? kb : touch.axis;
-  input.jumpHeld = !!(keys.ArrowUp || keys.Space || keys.KeyW || keys.KeyZ) || touch.a;
+  input.jumpHeld = !!(keys.ArrowUp || keys.Space || keys.KeyW || keys.KeyZ) || touch.a || touch.tapJump;
   input.fireHeld = !!(keys.KeyX || keys.KeyF || keys.KeyJ) || touch.b;
 }
 
 // touch buttons
-const touch = { axis:0, a:false, b:false };
+const touch = { axis:0, a:false, b:false, tapJump:false };
 const bA = document.getElementById('bA'), bB = document.getElementById('bB');
 function bindBtn(el, on, off) {
   el.addEventListener('pointerdown', e => { e.preventDefault(); on(); el.classList.add('pressed'); });
@@ -1133,6 +1150,23 @@ function showControls(v) {
   for (const el of [bA, bB, stick]) el.classList.toggle('hidden', !v);
   if (!v) stickReset();
 }
+
+// fallback: a touch on the right side of the raw canvas also jumps, so the
+// game stays playable even if browser zoom displaces the buttons
+let tapJumpId = null;
+window.addEventListener('pointerdown', e => {
+  if (e.target === screen && state === 'play' && e.clientX > window.innerWidth * 0.52) {
+    tapJumpId = e.pointerId;
+    touch.tapJump = true;
+    input.jump = true;
+  }
+});
+window.addEventListener('pointerup', e => {
+  if (e.pointerId === tapJumpId) { tapJumpId = null; touch.tapJump = false; }
+});
+window.addEventListener('pointercancel', e => {
+  if (e.pointerId === tapJumpId) { tapJumpId = null; touch.tapJump = false; }
+});
 window.addEventListener('pointerdown', e => {
   input.any = true;
   audio(); // unlock on first gesture
@@ -2166,6 +2200,8 @@ function drawWin() {
 let acc = 0, last = performance.now();
 function loop(now) {
   requestAnimationFrame(loop);
+  // self-heal: zoom/toolbar/rotation changes don't always fire resize
+  if (viewportSig() !== fitSig) fit();
   acc += Math.min(now - last, 100);
   last = now;
   const STEP = 1000/60;
