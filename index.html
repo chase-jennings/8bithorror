@@ -1001,7 +1001,7 @@ const TRACKS = {
 };
 const music = { timer:null, next:0, step:0, mode:'night' };
 function musicMode() {
-  if (state === 'win') return 'win';
+  if (state === 'win' || state === 'photo') return 'win';
   if (state === 'play' && wolfT > 0) return 'wolf';
   return 'night';
 }
@@ -1016,7 +1016,7 @@ function startMusic() {
     const tr = TRACKS[mode];
     while (music.next < ac.currentTime + 0.2) {
       const s = music.step, dt = Math.max(0, music.next - ac.currentTime);
-      if (state === 'play' || state === 'win') {
+      if (state === 'play' || state === 'win' || state === 'photo') {
         const L = tr.lead[s % tr.lead.length];
         if (L != null) tone(M2F(L), M2F(L), tr.leadDur, 'square', tr.leadVol, dt);
         if (s % 2 === 0) {
@@ -1129,8 +1129,11 @@ window.addEventListener('pointerdown', e => {
 document.addEventListener('contextmenu', e => e.preventDefault());
 
 //------------------------------------------------ game state
-let state = 'title';    // title | play | dying | gameover | win
+let state = 'title';    // title | intro | play | dying | gameover | photo | win
 let stateT = 0;
+// the reunion photo shown after the rescue
+const endingImg = new Image();
+endingImg.src = 'ending.png';
 let score = 0, souls = 0, hearts = 3;
 let best = 0;
 try { best = parseInt(localStorage.getItem('graverunner.best') || '0', 10) || 0; } catch(e) {}
@@ -1399,10 +1402,11 @@ function updatePlayer() {
   // reach Leah at the crypt door → rescue!
   if (player.x + player.w > leah.x - 4 && player.x < leah.x + 16 && player.y + player.h > leah.y) {
     leah.saved = true;
-    state = 'win'; stateT = 0;
+    state = 'photo'; stateT = 0;
     score += hearts * 500;
     if (score > best) { best = score; try { localStorage.setItem('graverunner.best', String(best)); } catch(e) {} }
     SFX.win();
+    showControls(false);
   }
 
   // animation
@@ -2029,12 +2033,6 @@ function drawIntro() {
   }
 
   drawFog();
-  // soft cinematic vignette on Chase
-  const g = ctx.createRadialGradient(34, gy - 10, 40, 34, gy - 10, 140);
-  g.addColorStop(0, 'rgba(4,0,12,0)');
-  g.addColorStop(1, 'rgba(4,0,12,0.45)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, VW, VH);
 
   if (t < 210) {
     drawTextC(ctx, 'THE GRAVE KING COMES...', 14, '#8f5cff');
@@ -2055,6 +2053,26 @@ function drawGameOver() {
   if (best > 0) drawTextC(ctx, 'BEST ' + best, 88, '#ffd75e');
   if ((frame >> 5) & 1) drawTextC(ctx, hasTouch ? 'TAP TO CONTINUE' : 'SPACE TO CONTINUE', 108, '#e8e0d0', 2);
   drawTextC(ctx, 'RISE AT YOUR LANTERN, SCORE KEPT', 128, '#5c5470');
+}
+
+function drawPhoto() {
+  ctx.fillStyle = '#0a0616';
+  ctx.fillRect(0, 0, VW, VH);
+  ctx.globalAlpha = Math.min(1, stateT / 40);   // gentle fade-in
+  if (endingImg.complete && endingImg.naturalWidth > 0) {
+    const availW = VW - 16, availH = VH - 22;
+    const s = Math.min(availW / endingImg.naturalWidth, availH / endingImg.naturalHeight);
+    const w = Math.floor(endingImg.naturalWidth * s), h = Math.floor(endingImg.naturalHeight * s);
+    const x = Math.floor((VW - w) / 2), y = Math.floor((VH - 14 - h) / 2) + 2;
+    ctx.fillStyle = '#f4f0f6';
+    ctx.fillRect(x - 2, y - 2, w + 4, h + 4);   // white photo frame
+    ctx.drawImage(endingImg, x, y, w, h);
+  }
+  const hb = Math.sin(frame * 0.1) * 2;
+  ctx.drawImage(sprHeart, 6, Math.floor(6 + hb));
+  ctx.drawImage(sprHeart, VW - 14, Math.floor(6 + hb));
+  drawTextC(ctx, 'TOGETHER AGAIN', VH - 10, '#f0ecf4');
+  ctx.globalAlpha = 1;
 }
 
 function drawWin() {
@@ -2141,6 +2159,13 @@ function tick() {
       state = 'play'; stateT = 0;
       showControls(true);
     }
+  } else if (state === 'photo') {
+    updateFX();
+    const imgReady = endingImg.complete && endingImg.naturalWidth > 0;
+    if (stateT > 420 || (stateT > 30 && input.any) || (!imgReady && stateT > 60)) {
+      input.any = false;
+      state = 'win'; stateT = 0;
+    }
   } else if (state === 'win') {
     updateFX();
     if (stateT > 30 && input.any) {
@@ -2161,6 +2186,8 @@ function render() {
     drawTitle();
   } else if (state === 'intro') {
     drawIntro();
+  } else if (state === 'photo') {
+    drawPhoto();
   } else {
     drawBackdrop();
     drawTiles();
