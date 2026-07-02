@@ -28,7 +28,7 @@ python3 -m http.server 8000
 
 | Phone | Keyboard |
 |---|---|
-| ◀ ▶ buttons — move | Arrow keys / A & D |
+| **Drag your thumb** left/right on the left half of the screen — move | Arrow keys / A & D |
 | JUMP button | Space / W / Up |
 | FIRE button — fireball | X / F / J |
 
@@ -45,6 +45,7 @@ python3 -m http.server 8000
 - **Candles are souls.** Collect 10 and a heart comes back.
 - **Skull blocks** hide souls — bump them from below. Bricks smash.
 - Spikes and pits send you back to the last **lantern checkpoint**.
+- Out of hearts? **Tap to continue** from your lantern — your score and souls are kept.
 
 You have 3 hearts. The graveyard is patient.
 
