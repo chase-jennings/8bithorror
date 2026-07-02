@@ -188,6 +188,15 @@ function textW(str, sc=1) { return String(str).length * 4 * sc - sc; }
 function drawTextC(c, str, y, color, sc=1) {
   drawText(c, str, Math.floor((VW - textW(str, sc)) / 2), y, color, sc);
 }
+// outlined text, readable over artwork
+function drawTextO(c, str, x, y, color, sc=1, outline='#0c0616') {
+  for (const [ox, oy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]])
+    drawText(c, str, x + ox, y + oy, outline, sc);
+  drawText(c, str, x, y, color, sc);
+}
+function drawTextCO(c, str, y, color, sc=1, outline='#0c0616') {
+  drawTextO(c, str, Math.floor((VW - textW(str, sc)) / 2), y, color, sc, outline);
+}
 
 //------------------------------------------------ sprite builder
 function makeSprite(rows, pal, w=16) {
@@ -2011,21 +2020,19 @@ function drawTitle() {
   drawBackdrop();
   drawFog();
   if (titleImg.complete && titleImg.naturalWidth > 0) {
-    // illustrated card, fit by height, live sky showing at the sides
-    const s = VH / titleImg.naturalHeight;
-    const w = Math.floor(titleImg.naturalWidth * s);
+    // full-bleed artwork (cover fit, biased to keep the ground in frame)
+    const s = Math.max(VW / titleImg.naturalWidth, VH / titleImg.naturalHeight);
+    const w = Math.ceil(titleImg.naturalWidth * s), h = Math.ceil(titleImg.naturalHeight * s);
     const x = Math.floor((VW - w) / 2);
-    ctx.drawImage(titleImg, x, 0, w, VH);
-    // replace the baked-in BEST banner with the real score
-    const bx = x + Math.floor(w * 0.20), bw = Math.floor(w * 0.60);
-    const by = Math.floor(VH * 0.83), bh = Math.floor(VH * 0.15);
-    ctx.fillStyle = '#0a0718';
-    ctx.fillRect(bx, by, bw, bh);
-    ctx.fillStyle = '#4a3a80';
-    ctx.fillRect(bx, by, bw, 1); ctx.fillRect(bx, by + bh - 1, bw, 1);
-    const msg = best > 0 ? 'BEST ' + best : 'GOOD LUCK, CHASE';
-    if ((frame >> 5) & 1 || best > 0)
-      drawText(ctx, msg, bx + Math.floor((bw - textW(msg)) / 2), by + Math.floor(bh / 2) - 2, '#ffd75e');
+    const y = -Math.floor((h - VH) * 0.35);
+    ctx.drawImage(titleImg, x, y, w, h);
+    // live text, outlined for readability
+    drawTextCO(ctx, 'RUN, CHASE, RUN!', 8, '#b085ff', 3);
+    drawTextCO(ctx, 'DEVELOPED BY CHASE JENNINGS', 32, '#d9cff0');
+    if ((frame >> 5) & 1)
+      drawTextCO(ctx, hasTouch ? 'TAP TO BEGIN' : 'PRESS SPACE', 50, '#f6ecd0', 2);
+    drawTextCO(ctx, 'RESCUE LEAH', 70, '#f0ecf4');
+    if (best > 0) drawTextCO(ctx, 'BEST ' + best, VH - 12, '#ffd75e');
     return;
   }
   // fallback if the art hasn't loaded
