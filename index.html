@@ -1143,9 +1143,9 @@ let stateT = 0;
 // the reunion photo shown after the rescue
 const endingImg = new Image();
 endingImg.src = 'ending.png';
-// illustrated title card
+// illustrated title card (?v= busts stale phone caches when the art changes)
 const titleImg = new Image();
-titleImg.src = 'title.png';
+titleImg.src = 'title.png?v=2';
 let score = 0, souls = 0, hearts = 3;
 let best = 0;
 try { best = parseInt(localStorage.getItem('graverunner.best') || '0', 10) || 0; } catch(e) {}
