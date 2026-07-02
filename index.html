@@ -741,17 +741,17 @@ castleCv.width = 96; castleCv.height = 84;
     c.moveTo(x - 2, y); c.lineTo(x + w + 2, y); c.lineTo(x + w/2, y - 16);
     c.closePath(); c.fill();
   };
-  c.fillStyle = '#161226';
+  c.fillStyle = '#2c2158';
   c.fillRect(32, 30, 32, 42);      // keep
   c.fillRect(18, 24, 12, 48);      // left tower
   c.fillRect(66, 24, 12, 48);      // right tower
   c.fillRect(42, 14, 12, 24);      // center tower
-  c.fillStyle = '#0f0b1c';
+  c.fillStyle = '#231a4a';
   spire(18, 12, 24); spire(66, 12, 24); spire(42, 12, 14);
-  c.fillStyle = '#ff9c28';         // lit windows
+  c.fillStyle = '#ffb040';         // lit windows
   c.fillRect(23, 38, 2, 4); c.fillRect(71, 33, 2, 4); c.fillRect(46, 22, 3, 4);
   c.fillRect(38, 44, 2, 3); c.fillRect(52, 50, 2, 3); c.fillRect(44, 58, 3, 5);
-  c.fillStyle = '#120e20';         // cliff
+  c.fillStyle = '#2c2158';         // cliff
   c.beginPath();
   c.moveTo(6, 84); c.lineTo(22, 70); c.lineTo(74, 70); c.lineTo(92, 84);
   c.closePath(); c.fill();
@@ -948,6 +948,17 @@ const SFX = {
               tone(520, 300, 1.1, 'sine', 0.08, 0.85); tone(392, 440, 0.5, 'triangle', 0.05, 0.1); },
   fire()    { tone(880, 140, 0.13, 'square', 0.055); noise(0.04, 0.02); },
   sizzle()  { tone(500, 60, 0.18, 'sawtooth', 0.06); noise(0.08, 0.05); },
+  laugh()   { // the Grave King: slow, booming mwa-ha-ha-ha-ha
+              [290, 262, 236, 208, 182].forEach((f, i) => {
+                tone(f*1.15, f*0.8, 0.16, 'sawtooth', 0.10, i*0.18);
+                noise(0.05, 0.02, i*0.18);
+              });
+              tone(85, 55, 1.2, 'triangle', 0.06); },
+  help()    { // Leah, far away: "help! help!"
+              for (const d of [0, 0.55]) {
+                tone(920, 1480, 0.11, 'triangle', 0.08, d);
+                tone(1480, 720, 0.18, 'triangle', 0.07, d + 0.11);
+              } },
   bark()    { tone(480, 210, 0.07, 'square', 0.09); tone(540, 230, 0.07, 'square', 0.09, 0.11); },
   holy()    { [523, 659, 784].forEach((f, i) => tone(f, f, 0.13, 'triangle', 0.05, i*0.08)); }
 };
@@ -1626,11 +1637,11 @@ const fogs = Array.from({length:6}, (_, i) => ({
 }));
 
 function drawBackdrop() {
-  // night sky
+  // night sky — brighter twilight so the foreground silhouettes pop
   const g = ctx.createLinearGradient(0, 0, 0, VH);
-  g.addColorStop(0, '#05010d');
-  g.addColorStop(0.55, '#120826');
-  g.addColorStop(1, '#241238');
+  g.addColorStop(0, '#151048');
+  g.addColorStop(0.5, '#332070');
+  g.addColorStop(1, '#5c3a94');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, VW, VH);
 
@@ -1647,24 +1658,24 @@ function drawBackdrop() {
   // stars
   for (const s of stars) {
     const sx = ((s.x - camX*0.1) % (VW+20) + VW+20) % (VW+20) - 10;
-    const a = 0.4 + 0.6*Math.abs(Math.sin(frame*0.02 + s.tw));
-    ctx.fillStyle = `rgba(200,190,255,${a.toFixed(2)})`;
+    const a = 0.5 + 0.5*Math.abs(Math.sin(frame*0.02 + s.tw));
+    ctx.fillStyle = `rgba(235,228,255,${a.toFixed(2)})`;
     ctx.fillRect(Math.floor(sx), s.y, s.s, s.s);
   }
 
   // pale harvest moon
   const mx = 232 - camX*0.05;
-  ctx.fillStyle = 'rgba(216,210,168,0.16)';
-  ctx.beginPath(); ctx.arc(mx, 38, 24, 0, 7); ctx.fill();
-  ctx.fillStyle = '#d8d2a8';
+  ctx.fillStyle = 'rgba(238,232,190,0.22)';
+  ctx.beginPath(); ctx.arc(mx, 38, 25, 0, 7); ctx.fill();
+  ctx.fillStyle = '#ece6ba';
   ctx.beginPath(); ctx.arc(mx, 38, 18, 0, 7); ctx.fill();
-  ctx.fillStyle = '#e8e2bc';
+  ctx.fillStyle = '#f8f4d4';
   ctx.beginPath(); ctx.arc(mx-4, 34, 13, 0, 7); ctx.fill();
-  ctx.fillStyle = '#c2bc8e';
+  ctx.fillStyle = '#d4cea0';
   ctx.fillRect(mx-8, 32, 4, 2); ctx.fillRect(mx+2, 40, 5, 3); ctx.fillRect(mx-2, 27, 3, 2); ctx.fillRect(mx+6, 33, 3, 2);
 
-  // towering spooky peaks, farthest layer
-  ctx.fillStyle = '#090414';
+  // towering spooky peaks, farthest layer (lightest — atmospheric haze)
+  ctx.fillStyle = '#463878';
   for (let i = -1; i < 5; i++) {
     const k = Math.floor(camX * 0.12 / 170) + i;
     const bx = k * 170 - camX * 0.12;
@@ -1679,7 +1690,7 @@ function drawBackdrop() {
   }
 
   // far mountains
-  ctx.fillStyle = '#0c0618';
+  ctx.fillStyle = '#352866';
   for (let i = -1; i < 6; i++) {
     const hx = i*130 - (camX*0.25 % 130);
     ctx.beginPath();
@@ -1694,7 +1705,7 @@ function drawBackdrop() {
   ctx.drawImage(castleCv, Math.floor(186 - camX*0.03), 62);
 
   // near silhouette trees + fence
-  ctx.fillStyle = '#080312';
+  ctx.fillStyle = '#251a4e';
   for (let i = -1; i < 8; i++) {
     const tx = i*90 - (camX*0.5 % 90);
     ctx.fillRect(tx+30, 108, 4, 52);
@@ -1899,7 +1910,7 @@ function drawFX() {
 }
 
 function drawFog() {
-  ctx.fillStyle = 'rgba(150,140,190,0.05)';
+  ctx.fillStyle = 'rgba(196,186,235,0.06)';
   for (const f of fogs) {
     f.x += f.sp;
     const dx = ((f.x - camX*0.7) % (VW + f.w*2) + VW + f.w*2) % (VW + f.w*2) - f.w;
@@ -1991,17 +2002,19 @@ function drawIntro() {
   ctx.drawImage(sprPlayer.idle, 29, standTop);
   ctx.drawImage(sprDog2, 10, gy - 12);
 
-  // the Grave King swoops in and steals the princess
-  let kx = -100, ky = 6, grabbed = false;
+  // the Grave King glides in slowly, hangs over her... then takes her
+  let kx = -100, ky = 6, grabbed = false, hovering = false;
   const kyGrab = standTop - 30;
   if (t >= 60) {
-    const p = Math.min(1, (t - 60) / 80);
+    const p = Math.min(1, (t - 60) / 120);
     kx = (VW + 40) - (VW + 40 - lxI) * p;
     ky = 6 + (kyGrab - 6) * p;
-    grabbed = t >= 140;
+    hovering = t >= 180 && t < 210;
+    grabbed = t >= 210;
+    if (hovering) { kx = lxI; ky = kyGrab + Math.sin(t * 0.3) * 2; }
     if (grabbed) {
-      kx = lxI + (t - 140) * 3.6;
-      ky = kyGrab + Math.sin(t * 0.2) * 3;
+      kx = lxI + (t - 210) * 2.2;
+      ky = kyGrab + Math.sin(t * 0.15) * 3;
     }
   }
   if (grabbed) {
@@ -2011,7 +2024,8 @@ function drawIntro() {
   } else {
     ctx.drawImage(sprLeah, lxI, standTop);
     if (t >= 60) drawKing(Math.floor(kx), Math.floor(ky));
-    if (((frame >> 4) & 1) && t < 140) drawText(ctx, 'CHASE! SAVE ME!', lxI - 26, standTop - 12, '#f0ecf4');
+    if (hovering && ((frame >> 3) & 1)) drawText(ctx, 'MWA HA HA!', lxI - 8, Math.floor(ky) - 12, '#8f5cff');
+    else if (((frame >> 4) & 1) && t < 180) drawText(ctx, 'CHASE! SAVE ME!', lxI - 26, standTop - 12, '#f0ecf4');
   }
 
   drawFog();
@@ -2022,7 +2036,7 @@ function drawIntro() {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, VW, VH);
 
-  if (t < 140) {
+  if (t < 210) {
     drawTextC(ctx, 'THE GRAVE KING COMES...', 14, '#8f5cff');
   } else {
     drawTextC(ctx, 'RESCUE LEAH!', 12, '#f0ecf4', 2);
@@ -2080,7 +2094,9 @@ function tick() {
     if (input.any) { input.any = false; resetRun(); state = 'intro'; stateT = 0; startAmbience(); startMusic(); }
   } else if (state === 'intro') {
     updateFX();
-    if (stateT > 285 || (stateT > 20 && input.any)) {
+    if (stateT === 180) { SFX.laugh(); shake = 6; }   // the grab
+    if (stateT === 300) SFX.help();                   // her cry from beyond the trees
+    if (stateT > 400 || (stateT > 20 && input.any)) {
       input.any = false;
       state = 'play'; stateT = 0;
       showControls(true);
