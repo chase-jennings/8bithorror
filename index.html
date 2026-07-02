@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#05010d">
+<title>GRAVE RUNNER &mdash; a spooky 8-bit nightmare</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body {
+    width:100%; height:100%;
+    background:#000;
+    overflow:hidden;
+    touch-action:none;
+    -webkit-user-select:none; user-select:none;
+    -webkit-touch-callout:none;
+    overscroll-behavior:none;
+    font-family:monospace;
+  }
+  #screen {
+    position:absolute;
+    image-rendering:pixelated;
+    image-rendering:crisp-edges;
+    background:#05010d;
+  }
+  /* subtle CRT scanlines over everything */
+  #crt {
+    position:fixed; inset:0; pointer-events:none; z-index:5;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0)   0px, rgba(0,0,0,0)   2px,
+      rgba(0,0,0,.18) 2px, rgba(0,0,0,.18) 3px
+    );
+    mix-blend-mode:multiply;
+  }
+  .btn {
+    position:fixed; z-index:10;
+    display:flex; align-items:center; justify-content:center;
+    color:rgba(220,200,255,.8);
+    background:rgba(40,20,70,.28);
+    border:2px solid rgba(160,120,220,.35);
+    border-radius:10px;
+    font-size:28px; font-weight:bold;
+    touch-action:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .btn.pressed { background:rgba(120,60,200,.45); color:#fff; }
+  #bL, #bR { width:70px; height:70px; bottom:calc(18px + env(safe-area-inset-bottom)); }
+  #bL { left:calc(16px + env(safe-area-inset-left)); }
+  #bR { left:calc(98px + env(safe-area-inset-left)); }
+  #bA {
+    width:84px; height:84px;
+    right:calc(20px + env(safe-area-inset-right));
+    bottom:calc(18px + env(safe-area-inset-bottom));
+    border-radius:50%;
+    font-size:20px;
+    letter-spacing:1px;
+  }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<canvas id="screen"></canvas>
+<div id="crt"></div>
+<div id="bL" class="btn hidden">&#9664;</div>
+<div id="bR" class="btn hidden">&#9654;</div>
+<div id="bA" class="btn hidden">JUMP</div>
+
+<script>
+"use strict";
+/* ============================================================
+   GRAVE RUNNER — a spooky 8-bit side-scroller
+   One file. No dependencies. Runs anywhere, built for phones.
+   ============================================================ */
+
+//------------------------------------------------ constants
+const TILE = 16;
+const VW = 320, VH = 192;              // internal 8-bit resolution (20x12 tiles)
+const GRAV = 0.28, MAXFALL = 5.0;
+const MOVE_ACC = 0.22, MOVE_MAX = 1.7, FRICTION = 0.80;
+const JUMP_V = -5.4, JUMP_CUT = 0.45;
+const COYOTE = 6, JBUFFER = 7;
+
+//------------------------------------------------ canvases
+const screen = document.getElementById('screen');
+const sctx = screen.getContext('2d');
+const view = document.createElement('canvas');
+view.width = VW; view.height = VH;
+const ctx = view.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+let scale = 1, offX = 0, offY = 0;
+function fit() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const w = window.innerWidth, h = window.innerHeight;
+  screen.width  = Math.round(w * dpr);
+  screen.height = Math.round(h * dpr);
+  screen.style.width = w + 'px';
+  screen.style.height = h + 'px';
+  const s = Math.min(screen.width / VW, screen.height / VH);
+  scale = s >= 2 ? Math.floor(s) : s;      // integer scale for crisp pixels when possible
+  offX = Math.floor((screen.width  - VW * scale) / 2);
+  offY = Math.floor((screen.height - VH * scale) / 2);
+  sctx.imageSmoothingEnabled = false;
+}
+window.addEventListener('resize', fit);
+window.addEventListener('orientationchange', () => setTimeout(fit, 100));
+fit();
+
+//------------------------------------------------ tiny 3x5 pixel font
+const FONT = {
+A:["010","101","111","101","101"],B:["110","101","110","101","110"],
+C:["011","100","100","100","011"],D:["110","101","101","101","110"],
+E:["111","100","110","100","111"],F:["111","100","110","100","100"],
+G:["011","100","101","101","011"],H:["101","101","111","101","101"],
+I:["111","010","010","010","111"],J:["001","001","001","101","010"],
+K:["101","110","100","110","101"],L:["100","100","100","100","111"],
+M:["101","111","111","101","101"],N:["110","101","101","101","101"],
+O:["010","101","101","101","010"],P:["110","101","110","100","100"],
+Q:["010","101","101","110","011"],R:["110","101","110","101","101"],
+S:["011","100","010","001","110"],T:["111","010","010","010","010"],
+U:["101","101","101","101","111"],V:["101","101","101","101","010"],
+W:["101","101","111","111","101"],X:["101","101","010","101","101"],
+Y:["101","101","010","010","010"],Z:["111","001","010","100","111"],
+"0":["111","101","101","101","111"],"1":["010","110","010","010","111"],
+"2":["111","001","111","100","111"],"3":["111","001","011","001","111"],
+"4":["101","101","111","001","001"],"5":["111","100","111","001","111"],
+"6":["111","100","111","101","111"],"7":["111","001","010","010","010"],
+"8":["111","101","111","101","111"],"9":["111","101","111","001","111"],
+"-":["000","000","111","000","000"],"!":["010","010","010","000","010"],
+".":["000","000","000","000","010"],":":["000","010","000","010","000"],
+"+":["000","010","111","010","000"],"'":["010","010","000","000","000"],
+" ":["000","000","000","000","000"]
+};
+function drawText(c, str, x, y, color, sc=1) {
+  c.fillStyle = color;
+  let cx = x;
+  for (const raw of String(str).toUpperCase()) {
+    const g = FONT[raw] || FONT[' '];
+    for (let r = 0; r < 5; r++)
+      for (let k = 0; k < 3; k++)
+        if (g[r][k] === '1') c.fillRect(cx + k*sc, y + r*sc, sc, sc);
+    cx += 4*sc;
+  }
+  return cx;
+}
+function textW(str, sc=1) { return String(str).length * 4 * sc - sc; }
+function drawTextC(c, str, y, color, sc=1) {
+  drawText(c, str, Math.floor((VW - textW(str, sc)) / 2), y, color, sc);
+}
+
+//------------------------------------------------ sprite builder
+function makeSprite(rows, pal, w=16) {
+  const h = rows.length;
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const c = cv.getContext('2d');
+  for (let y = 0; y < h; y++) {
+    const row = (rows[y] || '').padEnd(w, '.');
+    for (let x = 0; x < w; x++) {
+      const col = pal[row[x]];
+      if (col) { c.fillStyle = col; c.fillRect(x, y, 1, 1); }
+    }
+  }
+  return cv;
+}
+function flipSprite(sp) {
+  const cv = document.createElement('canvas');
+  cv.width = sp.width; cv.height = sp.height;
+  const c = cv.getContext('2d');
+  c.translate(sp.width, 0); c.scale(-1, 1);
+  c.drawImage(sp, 0, 0);
+  return cv;
+}
+
+//------------------------------------------------ palettes + sprites
+const P_PLAYER = { X:'#8c1428', F:'#d9e4c6', R:'#ff2a2a', O:'#1a0a12',
+                   C:'#23233a', L:'#141420', S:'#3a2417', H:'#d9e4c6' };
+const PLAYER_TOP = [
+"......XXXX......",
+"....XXXXXXXX....",
+"...XXXXXXXXXX...",
+"...XXFFFFFFXX...",
+"...XFFFFFFFFX...",
+"...XFRFFFFRFX...",
+"...XFFFFFFFFX...",
+"....FFFOOFFF....",
+"......CCCC......",
+"....CCCCCCCC....",
+"...HCCCCCCCCH...",
+"...HCCCCCCCCH..."
+];
+const sprPlayer = {
+  idle: makeSprite(PLAYER_TOP.concat([
+    ".....CC..CC.....",
+    ".....LL..LL.....",
+    ".....LL..LL.....",
+    "....SSS..SSS...."]), P_PLAYER),
+  run1: makeSprite(PLAYER_TOP.concat([
+    ".....CC..CC.....",
+    "....LL....LL....",
+    "...LL......LL...",
+    "..SSS......SSS.."]), P_PLAYER),
+  run2: makeSprite(PLAYER_TOP.concat([
+    "......CCCC......",
+    "......LLLL......",
+    ".....LL.LL......",
+    ".....SS.SS......"]), P_PLAYER),
+  jump: makeSprite(PLAYER_TOP.concat([
+    ".....CC..CC.....",
+    "....LLL..LLL....",
+    "...SS......SS...",
+    "................"]), P_PLAYER)
+};
+for (const k in sprPlayer) sprPlayer[k+'L'] = flipSprite(sprPlayer[k]);
+
+const P_ZOMB = { G:'#5a8a3c', D:'#2e4d3a', W:'#e8e8c8', R:'#a02020', M:'#1a2a14' };
+const ZOMB_TOP = [
+"....GGGGGG......",
+"...GGGGGGGG.....",
+"...GWGGGGWG.....",
+"...GRGGGGRG.....",
+"....GGMMGG......",
+".....DDDD.......",
+"....DDDDDDGGG...",
+"....DDDDDD......",
+"....DDDDDD......",
+"....DDDDDD......",
+"....DDDDDD......"
+];
+const sprZomb1 = makeSprite(ZOMB_TOP.concat([
+  ".....D..D.......",
+  "....DD..D.......",
+  "...DD...DD......",
+  "..GG.....GG.....",
+  "................"]), P_ZOMB);
+const sprZomb2 = makeSprite(ZOMB_TOP.concat([
+  ".....D..D.......",
+  ".....D..DD......",
+  "....DD...DD.....",
+  "...GG.....GG....",
+  "................"]), P_ZOMB);
+const sprZomb1L = flipSprite(sprZomb1), sprZomb2L = flipSprite(sprZomb2);
+
+const P_GHOST = { W:'#dfe8f4', B:'#101020', O:'#38304a', S:'#b8c4dc' };
+const sprGhost1 = makeSprite([
+".....WWWWWW.....",
+"...WWWWWWWWWW...",
+"..WWWWWWWWWWWW..",
+"..WWBWWWWBWWWW..",
+"..WWBWWWWBWWWW..",
+".WWWWWWWWWWWWWW.",
+".WWWWWOOWWWWWWW.",
+".WWWWWOOWWWWWWW.",
+".WWWWWWWWWWWWWW.",
+".WSWWSWWSWWSWWW.",
+".W.WW.WW.WW.WW..",
+"................"], P_GHOST);
+const sprGhost2 = makeSprite([
+".....WWWWWW.....",
+"...WWWWWWWWWW...",
+"..WWWWWWWWWWWW..",
+"..WWBWWWWBWWWW..",
+"..WWBWWWWBWWWW..",
+".WWWWWWWWWWWWWW.",
+".WWWWWOOWWWWWWW.",
+".WWWWWOOWWWWWWW.",
+".WWWWWWWWWWWWWW.",
+".WWSWWSWWSWWSWW.",
+"..WW.WW.WW.WW.W.",
+"................"], P_GHOST);
+const sprGhost1L = flipSprite(sprGhost1), sprGhost2L = flipSprite(sprGhost2);
+
+const P_BAT = { B:'#3a2a52', W:'#241638', R:'#ff3838' };
+const sprBat1 = makeSprite([
+"WW............WW",
+"WWWW........WWWW",
+"WWWWWW.BB.WWWWWW",
+"..WWWWBBBBWWWW..",
+"....WWBRRBWW....",
+"......BBBB......",
+".......BB.......",
+"................"], P_BAT);
+const sprBat2 = makeSprite([
+"................",
+".......BB.......",
+"..WW..BBBB..WW..",
+".WWWWWBRRBWWWWW.",
+"WWWWWWBBBBWWWWWW",
+"WW....BBBB....WW",
+".......BB.......",
+"................"], P_BAT);
+
+const P_CANDLE = { W:'#e8e0d0', Y:'#ffd75e', O:'#ff8c28', S:'#9c94847f' };
+const sprCandle1 = makeSprite([
+"...Y....",
+"..YYY...",
+"..YOY...",
+"...O....",
+"..WWW...",
+"..WWW...",
+"..WWW...",
+"..WWW..."], P_CANDLE, 8);
+const sprCandle2 = makeSprite([
+"..Y.....",
+"..YYY...",
+"..OYY...",
+"...O....",
+"..WWW...",
+"..WWW...",
+"..WWW...",
+"..WWW..."], P_CANDLE, 8);
+
+const P_HEART = { R:'#e02848', D:'#8c1028' };
+const sprHeart = makeSprite([
+".RR.RR..",
+"RRRRRRR.",
+"RRRRRRR.",
+".RRRRR..",
+"..RRR...",
+"...R...."], P_HEART, 8);
+const sprHeartE = makeSprite([
+".DD.DD..",
+"D..D..D.",
+"D.....D.",
+".D...D..",
+"..D.D...",
+"...D...."], P_HEART, 8);
+
+const P_TOMB = { G:'#5c5470', D:'#38324a', X:'#241e33' };
+const sprTomb = makeSprite([
+"................",
+"................",
+"................",
+"................",
+".....GGGGG......",
+"....GGGGGGG.....",
+"....GGGXGGG.....",
+"....GGXXXGG.....",
+"....GGGXGGG.....",
+"....GGGXGGG.....",
+"....GDGGGDG.....",
+"....GGGGGGG.....",
+"....GDGGGGG.....",
+"....GGGGGDG.....",
+"...DGGGGGGGD....",
+"..DDDDDDDDDDD..."], P_TOMB);
+const sprTomb2 = makeSprite([
+"................",
+"................",
+"................",
+"................",
+"................",
+"................",
+".....GGGGGG.....",
+"....GGGGGGGG....",
+"....GGDDDDGG....",
+"....GGGGGGGG....",
+"....GDGGGGDG....",
+"....GGGGGGGG....",
+"....GGGDDGGG....",
+"....GGGGGGGG....",
+"...DGGGGGGGGD...",
+"..DDDDDDDDDDDD.."], P_TOMB);
+
+//------------------------------------------------ tiles (procedural)
+function makeTile(fn) {
+  const cv = document.createElement('canvas');
+  cv.width = TILE; cv.height = TILE;
+  fn(cv.getContext('2d'));
+  return cv;
+}
+const tGround = makeTile(c => {
+  c.fillStyle = '#241436'; c.fillRect(0,0,16,16);
+  c.fillStyle = '#190d28';
+  c.fillRect(2,5,4,3); c.fillRect(9,9,5,3); c.fillRect(5,13,4,2); c.fillRect(12,3,3,3);
+  c.fillStyle = '#3d2a55'; c.fillRect(0,0,16,3);
+  c.fillStyle = '#57407a';
+  c.fillRect(0,0,16,1);
+  c.fillRect(2,1,1,2); c.fillRect(6,1,1,1); c.fillRect(11,1,1,2); c.fillRect(14,1,1,1);
+});
+const tDirt = makeTile(c => {
+  c.fillStyle = '#1d0f2c'; c.fillRect(0,0,16,16);
+  c.fillStyle = '#150a20';
+  c.fillRect(3,2,4,3); c.fillRect(10,7,4,3); c.fillRect(2,11,4,3); c.fillRect(11,13,4,2);
+});
+const tBrick = makeTile(c => {
+  c.fillStyle = '#3a2a50'; c.fillRect(0,0,16,16);
+  c.fillStyle = '#170d24';
+  c.fillRect(0,0,16,1); c.fillRect(0,7,16,1); c.fillRect(0,15,16,1);
+  c.fillRect(7,1,1,6); c.fillRect(3,8,1,7); c.fillRect(12,8,1,7);
+  c.fillStyle = '#4e3a68';
+  c.fillRect(1,1,5,1); c.fillRect(9,1,6,1); c.fillRect(1,8,1,6);
+});
+const tSkullBlock = makeTile(c => {
+  c.fillStyle = '#c8bf9e'; c.fillRect(0,0,16,16);
+  c.fillStyle = '#8f8768';
+  c.fillRect(0,15,16,1); c.fillRect(15,0,1,16);
+  c.fillStyle = '#efe9cd'; c.fillRect(0,0,16,1); c.fillRect(0,0,1,16);
+  c.fillStyle = '#241e33';
+  c.fillRect(4,4,3,3); c.fillRect(9,4,3,3);       // eye sockets
+  c.fillRect(7,8,2,2);                            // nose
+  c.fillRect(4,11,8,1);                           // grin
+  c.fillRect(5,12,1,1); c.fillRect(7,12,1,1); c.fillRect(9,12,1,1);
+});
+const tUsedBlock = makeTile(c => {
+  c.fillStyle = '#57506b'; c.fillRect(0,0,16,16);
+  c.fillStyle = '#38324a'; c.fillRect(0,15,16,1); c.fillRect(15,0,1,16);
+  c.fillStyle = '#6b6482'; c.fillRect(0,0,16,1); c.fillRect(0,0,1,16);
+  c.fillStyle = '#38324a'; c.fillRect(6,6,4,4);
+});
+const tPlatform = makeTile(c => {
+  c.fillStyle = '#b0a888'; c.fillRect(0,2,16,4);   // bone plank
+  c.fillStyle = '#d8d0b0'; c.fillRect(0,2,16,1);
+  c.fillStyle = '#7c7458'; c.fillRect(0,5,16,1);
+  c.fillStyle = '#d8d0b0'; c.fillRect(0,1,3,1); c.fillRect(13,1,3,1);
+  c.fillRect(0,6,3,1); c.fillRect(13,6,3,1);
+});
+const tSpike = makeTile(c => {
+  c.fillStyle = '#8a8598';
+  for (let i = 0; i < 4; i++) {
+    const bx = i*4;
+    c.beginPath();
+    c.moveTo(bx, 16); c.lineTo(bx+2, 6); c.lineTo(bx+4, 16);
+    c.closePath(); c.fill();
+  }
+  c.fillStyle = '#c8c4d4';
+  for (let i = 0; i < 4; i++) c.fillRect(i*4+1, 9, 1, 5);
+});
+
+// door: 32x32 crypt gate
+const doorCv = document.createElement('canvas');
+doorCv.width = 32; doorCv.height = 32;
+{
+  const c = doorCv.getContext('2d');
+  c.fillStyle = '#2b2138'; c.fillRect(0,0,32,32);
+  c.fillStyle = '#150a20'; c.fillRect(4,6,24,26);
+  c.fillStyle = '#0a0512'; c.fillRect(6,8,20,24);
+  c.fillStyle = '#8f5cff';                               // eerie glow arch
+  c.fillRect(6,8,20,1); c.fillRect(6,8,1,24); c.fillRect(25,8,1,24);
+  c.fillStyle = '#4e3a68';
+  c.fillRect(0,0,32,2); c.fillRect(0,4,32,1);
+  c.fillStyle = '#c8bf9e';                               // skull keystone
+  c.fillRect(13,1,6,4);
+  c.fillStyle = '#150a20'; c.fillRect(14,2,1,1); c.fillRect(17,2,1,1); c.fillRect(15,4,2,1);
+}
+
+// dead tree: 32x48 silhouette-ish decor
+const treeCv = document.createElement('canvas');
+treeCv.width = 32; treeCv.height = 48;
+{
+  const c = treeCv.getContext('2d');
+  c.strokeStyle = '#171022'; c.fillStyle = '#171022';
+  c.fillRect(14, 20, 4, 28);
+  c.lineWidth = 2;
+  c.beginPath(); c.moveTo(16,24); c.lineTo(6,12); c.lineTo(2,10); c.stroke();
+  c.beginPath(); c.moveTo(6,12); c.lineTo(8,4); c.stroke();
+  c.beginPath(); c.moveTo(16,22); c.lineTo(24,8); c.lineTo(30,6); c.stroke();
+  c.beginPath(); c.moveTo(24,8); c.lineTo(22,2); c.stroke();
+  c.beginPath(); c.moveTo(16,32); c.lineTo(26,26); c.stroke();
+}
+
+// checkpoint lantern post: 16x32
+function makeLantern(lit) {
+  const cv = document.createElement('canvas');
+  cv.width = 16; cv.height = 32;
+  const c = cv.getContext('2d');
+  c.fillStyle = '#1c1428';
+  c.fillRect(7,6,2,26);
+  c.fillRect(4,31,8,1);
+  c.fillStyle = '#38324a'; c.fillRect(4,0,8,2); c.fillRect(5,2,6,8);
+  c.fillStyle = lit ? '#ffd75e' : '#0d0716';
+  c.fillRect(6,3,4,6);
+  if (lit) { c.fillStyle = '#ff8c28'; c.fillRect(7,5,2,3); }
+  return cv;
+}
+const sprLanternOff = makeLantern(false), sprLanternOn = makeLantern(true);
+
+//------------------------------------------------ level
+const COLS = 192, ROWS = 12;
+let grid;
+const enemies = [], candles = [], decor = [], checkpoints = [];
+let doorRect = null;
+
+function set(x, y, ch) { if (x>=0 && x<COLS && y>=0 && y<ROWS) grid[y][x] = ch; }
+function ground(x0, x1) { for (let x=x0; x<=x1; x++) { set(x,10,'#'); set(x,11,'D'); } }
+function fill(x0,y0,x1,y1,ch){ for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++) set(x,y,ch); }
+function platform(x0, x1, y) { for (let x=x0; x<=x1; x++) set(x,y,'-'); }
+function spikes(x0, x1) { for (let x=x0; x<=x1; x++) set(x,9,'^'); }
+function candle(x, y) { candles.push({x:x*TILE+4, y:y*TILE+2, taken:false, t:Math.random()*99}); }
+function zombie(x) { enemies.push({type:'z', x:x*TILE, y:9*TILE, w:12, h:15, vx:-0.35, vy:0, dead:0, t:0, sx:x*TILE}); }
+function bat(x, y) { enemies.push({type:'b', x:x*TILE, y:y*TILE, w:14, h:8, vx:0, vy:0, dead:0, t:0, mode:0, sx:x*TILE, sy:y*TILE}); }
+function ghost(x, y) { enemies.push({type:'g', x:x*TILE, y:y*TILE, w:13, h:11, vx:0, vy:0, dead:0, t:Math.random()*99, sx:x*TILE, sy:y*TILE}); }
+function tomb(x, v) { decor.push({t: v ? 'tomb2':'tomb', x:x*TILE, y:9*TILE}); }
+function tree(x) { decor.push({t:'tree', x:x*TILE, y:9*TILE-32}); }
+function checkpoint(x) { checkpoints.push({x:x*TILE, y:8*TILE, hit:false}); }
+
+function buildLevel() {
+  grid = Array.from({length: ROWS}, () => Array(COLS).fill('.'));
+  enemies.length = 0; candles.length = 0; decor.length = 0; checkpoints.length = 0;
+
+  // -- opening stretch: learn to run & jump
+  ground(0, 18);
+  tomb(4); tomb(7, 1); tree(10); tomb(14);
+  candle(6, 8); candle(8, 8); candle(10, 8);
+  zombie(13);
+  set(16,7,'?'); set(17,7,'B'); set(18,7,'?');
+
+  // -- first pit
+  ground(22, 34);
+  platform(24, 27, 7);
+  candle(25, 5); candle(26, 5);
+  bat(30, 3); zombie(32);
+  tomb(28);
+
+  // -- bone bridge over pit
+  platform(35, 37, 8);
+  candle(36, 6);
+
+  ground(38, 52);
+  zombie(42); zombie(46);
+  tree(40); tomb(44, 1);
+  set(49,9,'#'); fill(50,8,50,9,'#'); fill(51,7,51,9,'#');   // stair up
+
+  // -- long gap with sky bones
+  platform(54, 55, 6);
+  candle(54, 4); candle(55, 4);
+
+  // -- graveyard row + first ghost + spikes
+  ground(57, 75);
+  tomb(59); tomb(61, 1); tomb(63);
+  ghost(64, 4);
+  spikes(66, 68);
+  platform(65, 69, 6);
+  candle(66, 4); candle(67, 4); candle(68, 4);
+  zombie(72);
+  checkpoint(74);
+
+  ground(79, 95);
+  tree(82);
+  set(84,6,'?'); set(85,6,'B'); set(86,6,'?');
+  zombie(88); bat(90, 2); zombie(93);
+  tomb(91, 1);
+
+  platform(97, 98, 7);
+  candle(97, 5); candle(98, 5);
+
+  // -- pyramid hill
+  ground(100, 118);
+  ghost(105, 3);
+  candle(103, 7); candle(104, 7);
+  zombie(108);
+  set(110,9,'#'); fill(111,8,111,9,'#'); fill(112,7,112,9,'#');
+  fill(113,6,113,9,'#'); fill(114,7,114,9,'#'); fill(115,8,115,9,'#'); set(116,9,'#');
+  candle(113, 3);
+  tomb(117, 1);
+
+  // -- spike alley: high road or timing
+  ground(122, 140);
+  tomb(124); spikes(128, 131);
+  platform(126, 133, 5);
+  candle(128, 3); candle(129, 3); candle(130, 3); candle(131, 3);
+  zombie(136); tomb(138, 1);
+
+  platform(142, 143, 7);
+
+  // -- final gauntlet
+  ground(145, 175);
+  checkpoint(147);
+  tomb(148); tree(151); tomb(153, 1); tomb(157); tree(162); tomb(164, 1);
+  zombie(150); bat(152, 2); zombie(155); bat(158, 3); zombie(160); ghost(163, 3); zombie(166);
+  candle(168, 8); candle(169, 8); candle(170, 8);
+  set(171,9,'#'); fill(172,8,172,9,'#'); fill(173,7,173,9,'#');
+
+  // -- the crypt
+  ground(176, 191);
+  fill(187, 3, 191, 9, 'B');
+  candle(183, 6); candle(186, 6);
+  doorRect = { x: 184*TILE, y: 8*TILE, w: 32, h: 32 };
+}
+function tileAt(tx, ty) {
+  if (tx < 0 || tx >= COLS) return '#';
+  if (ty < 0 || ty >= ROWS) return '.';
+  return grid[ty][tx];
+}
+function isSolid(ch) { return ch==='#' || ch==='B' || ch==='?' || ch==='U' || ch==='D'; }
+
+//------------------------------------------------ audio (webaudio chiptunes)
+let AC = null, ambOn = false;
+function audio() {
+  if (!AC) {
+    try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return null; }
+  }
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function tone(f0, f1, dur, type='square', vol=0.08, delay=0) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + delay;
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(f1, 1), t + dur);
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(a.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function noise(dur, vol=0.1, delay=0) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + delay;
+  const len = Math.floor(a.sampleRate * dur);
+  const buf = a.createBuffer(1, len, a.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * (1 - i/len);
+  const s = a.createBufferSource(); s.buffer = buf;
+  const g = a.createGain(); g.gain.value = vol;
+  s.connect(g); g.connect(a.destination);
+  s.start(t);
+}
+const SFX = {
+  jump()    { tone(200, 480, 0.14, 'square', 0.06); },
+  stomp()   { tone(180, 40, 0.16, 'square', 0.09); noise(0.08, 0.05); },
+  collect() { tone(660, 660, 0.07, 'square', 0.05); tone(990, 990, 0.10, 'square', 0.05, 0.07); },
+  bump()    { tone(90, 60, 0.08, 'square', 0.08); },
+  brick()   { noise(0.15, 0.12); tone(140, 60, 0.1, 'square', 0.05); },
+  hurt()    { tone(240, 50, 0.35, 'sawtooth', 0.09); },
+  die()     { tone(300, 40, 0.7, 'sawtooth', 0.09); tone(150, 30, 0.9, 'triangle', 0.07, 0.1); },
+  check()   { tone(440, 440, 0.09, 'square', 0.05); tone(660, 660, 0.12, 'square', 0.05, 0.09); },
+  heart()   { tone(520, 780, 0.15, 'triangle', 0.07); },
+  win()     { [392, 523, 659, 784].forEach((f, i) => tone(f, f, 0.16, 'square', 0.06, i*0.13)); },
+  ghost()   { tone(600, 200, 0.5, 'sine', 0.04); }
+};
+function startAmbience() {
+  const a = audio(); if (!a || ambOn) return;
+  ambOn = true;
+  const g = a.createGain(); g.gain.value = 0.018;
+  const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 160;
+  const o1 = a.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 55;
+  const o2 = a.createOscillator(); o2.type = 'sawtooth'; o2.frequency.value = 55.7;
+  const lfo = a.createOscillator(); lfo.frequency.value = 0.13;
+  const lfoG = a.createGain(); lfoG.gain.value = 0.010;
+  lfo.connect(lfoG); lfoG.connect(g.gain);
+  o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(a.destination);
+  o1.start(); o2.start(); lfo.start();
+  (function moan() {
+    setTimeout(() => {
+      if (state === 'play') tone(280 + Math.random()*80, 180, 1.2, 'sine', 0.015);
+      moan();
+    }, 9000 + Math.random()*9000);
+  })();
+}
+
+//------------------------------------------------ input
+const input = { l:false, r:false, jump:false, jumpHeld:false, any:false };
+const keys = {};
+window.addEventListener('keydown', e => {
+  if (['ArrowLeft','ArrowRight','ArrowUp','Space','KeyA','KeyD','KeyW','KeyZ'].includes(e.code)) e.preventDefault();
+  if (!keys[e.code]) {
+    if (['ArrowUp','Space','KeyW','KeyZ'].includes(e.code)) input.jump = true;
+    if (['Space','Enter','ArrowUp','KeyW','KeyZ'].includes(e.code)) input.any = true;
+  }
+  keys[e.code] = true;
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+function pollKeys() {
+  input.l = !!(keys.ArrowLeft || keys.KeyA) || touch.l;
+  input.r = !!(keys.ArrowRight || keys.KeyD) || touch.r;
+  input.jumpHeld = !!(keys.ArrowUp || keys.Space || keys.KeyW || keys.KeyZ) || touch.a;
+}
+
+// touch buttons
+const touch = { l:false, r:false, a:false };
+const bL = document.getElementById('bL'), bR = document.getElementById('bR'), bA = document.getElementById('bA');
+function bindBtn(el, on, off) {
+  el.addEventListener('pointerdown', e => { e.preventDefault(); on(); el.classList.add('pressed'); });
+  el.addEventListener('pointerup',   e => { e.preventDefault(); off(); el.classList.remove('pressed'); });
+  el.addEventListener('pointercancel', () => { off(); el.classList.remove('pressed'); });
+  el.addEventListener('pointerleave',  () => { off(); el.classList.remove('pressed'); });
+}
+bindBtn(bL, () => touch.l = true, () => touch.l = false);
+bindBtn(bR, () => touch.r = true, () => touch.r = false);
+bindBtn(bA, () => { touch.a = true; input.jump = true; }, () => touch.a = false);
+const hasTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+function showControls(v) {
+  if (!hasTouch) v = false;
+  for (const el of [bL, bR, bA]) el.classList.toggle('hidden', !v);
+}
+window.addEventListener('pointerdown', e => {
+  input.any = true;
+  audio(); // unlock on first gesture
+}, { passive:true });
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+//------------------------------------------------ game state
+let state = 'title';    // title | play | dying | gameover | win
+let stateT = 0;
+let score = 0, souls = 0, hearts = 3;
+let best = 0;
+try { best = parseInt(localStorage.getItem('graverunner.best') || '0', 10) || 0; } catch(e) {}
+
+const player = {
+  x:0, y:0, vx:0, vy:0, w:10, h:14,
+  dir:1, onGround:false, coyote:0, jbuf:0,
+  anim:0, inv:0, spawnX:0, spawnY:0
+};
+let camX = 0;
+let particles = [], popups = [], risers = [];
+let shake = 0, flashT = 0, lightT = 0;
+let frame = 0;
+
+function resetRun() {
+  buildLevel();
+  score = 0; souls = 0; hearts = 3;
+  player.spawnX = 2*TILE; player.spawnY = 8*TILE;
+  respawn();
+  camX = 0;
+  particles = []; popups = []; risers = [];
+}
+function respawn() {
+  player.x = player.spawnX; player.y = player.spawnY;
+  player.vx = 0; player.vy = 0; player.dir = 1;
+  player.inv = 90; player.onGround = false;
+}
+function addPop(x, y, txt, col='#ffd75e') { popups.push({x, y, txt, col, t:0}); }
+function poof(x, y, col, n=8) {
+  for (let i = 0; i < n; i++)
+    particles.push({ x, y, vx:(Math.random()-0.5)*2.4, vy:-Math.random()*2.2, t:0, life:20+Math.random()*15, col });
+}
+function gainSoul(x, y) {
+  souls++;
+  score += 100;
+  addPop(x, y, '+100');
+  SFX.collect();
+  if (souls % 10 === 0 && hearts < 3) { hearts++; SFX.heart(); addPop(player.x, player.y-10, '+1 UP', '#e02848'); }
+}
+function hurt(fromX) {
+  if (player.inv > 0) return;
+  hearts--;
+  shake = 8; flashT = 6;
+  if (hearts <= 0) {
+    state = 'dying'; stateT = 0;
+    player.vy = -5; player.vx = 0;
+    SFX.die();
+    return;
+  }
+  SFX.hurt();
+  player.inv = 90;
+  player.vy = -3.4;
+  player.vx = (player.x + player.w/2 < fromX) ? -2.2 : 2.2;
+}
+function pitDeath() {
+  hearts--;
+  shake = 6;
+  if (hearts <= 0) { state = 'dying'; stateT = 30; SFX.die(); return; }
+  SFX.hurt();
+  respawn();
+}
+
+//------------------------------------------------ physics helpers
+function collideX(e) {
+  const dir = Math.sign(e.vx);
+  e.x += e.vx;
+  if (!dir) return false;
+  const edge = dir > 0 ? e.x + e.w : e.x;
+  const tx = Math.floor(edge / TILE);
+  const y0 = Math.floor(e.y / TILE), y1 = Math.floor((e.y + e.h - 1) / TILE);
+  for (let ty = y0; ty <= y1; ty++) {
+    if (isSolid(tileAt(tx, ty))) {
+      e.x = dir > 0 ? tx*TILE - e.w - 0.01 : (tx+1)*TILE + 0.01;
+      e.vx = 0;
+      return true;
+    }
+  }
+  return false;
+}
+function collideY(e, oneWay, onHead) {
+  const prevBot = e.y + e.h;
+  e.y += e.vy;
+  const dir = Math.sign(e.vy);
+  if (!dir) return false;
+  const edge = dir > 0 ? e.y + e.h : e.y;
+  const ty = Math.floor(edge / TILE);
+  const x0 = Math.floor((e.x+1) / TILE), x1 = Math.floor((e.x + e.w - 1) / TILE);
+  for (let tx = x0; tx <= x1; tx++) {
+    const ch = tileAt(tx, ty);
+    if (isSolid(ch)) {
+      if (dir > 0) { e.y = ty*TILE - e.h - 0.01; e.vy = 0; return true; }
+      e.y = (ty+1)*TILE + 0.01; e.vy = 0;
+      if (onHead) onHead(tx, ty, ch);
+      return true;
+    }
+    if (oneWay && ch === '-' && dir > 0 && prevBot <= ty*TILE + 1) {
+      e.y = ty*TILE - e.h - 0.01; e.vy = 0;
+      return true;
+    }
+  }
+  return false;
+}
+
+//------------------------------------------------ update
+function bumpBlock(tx, ty, ch) {
+  if (ch === '?') {
+    grid[ty][tx] = 'U';
+    risers.push({ x:tx*TILE+4, y:ty*TILE-2, t:0 });
+    gainSoul(tx*TILE+4, ty*TILE-6);
+  } else if (ch === 'B') {
+    grid[ty][tx] = '.';
+    poof(tx*TILE+8, ty*TILE+8, '#4e3a68', 10);
+    score += 50;
+    SFX.brick();
+  } else {
+    SFX.bump();
+  }
+}
+
+function updatePlayer() {
+  pollKeys();
+  // horizontal
+  if (input.l) { player.vx -= MOVE_ACC; player.dir = -1; }
+  if (input.r) { player.vx += MOVE_ACC; player.dir = 1; }
+  if (!input.l && !input.r) player.vx *= FRICTION;
+  if (Math.abs(player.vx) < 0.05) player.vx = 0;
+  player.vx = Math.max(-MOVE_MAX, Math.min(MOVE_MAX, player.vx));
+
+  // jump buffering + coyote
+  if (input.jump) { player.jbuf = JBUFFER; input.jump = false; }
+  else if (player.jbuf > 0) player.jbuf--;
+  if (player.onGround) player.coyote = COYOTE;
+  else if (player.coyote > 0) player.coyote--;
+  if (player.jbuf > 0 && player.coyote > 0) {
+    player.vy = JUMP_V;
+    player.coyote = 0; player.jbuf = 0;
+    player.onGround = false;
+    SFX.jump();
+  }
+  if (!input.jumpHeld && player.vy < JUMP_V * JUMP_CUT) player.vy = JUMP_V * JUMP_CUT;
+
+  player.vy = Math.min(player.vy + GRAV, MAXFALL);
+
+  collideX(player);
+  const hitG = collideY(player, true, bumpBlock);
+  player.onGround = hitG && player.vy === 0 && true;
+  // more precise ground check: standing if blocked while moving down
+  if (hitG) {
+    const below = player.y + player.h + 2;
+    const ty = Math.floor(below / TILE);
+    const x0 = Math.floor((player.x+1)/TILE), x1 = Math.floor((player.x+player.w-1)/TILE);
+    let g = false;
+    for (let tx = x0; tx <= x1; tx++) {
+      const ch = tileAt(tx, ty);
+      if (isSolid(ch) || ch === '-') g = true;
+    }
+    player.onGround = g;
+  } else player.onGround = false;
+
+  // clamp to level
+  if (player.x < 0) { player.x = 0; player.vx = 0; }
+  if (player.x > COLS*TILE - player.w) { player.x = COLS*TILE - player.w; player.vx = 0; }
+
+  if (player.inv > 0) player.inv--;
+
+  // spikes
+  const cx0 = Math.floor((player.x+2)/TILE), cx1 = Math.floor((player.x+player.w-2)/TILE);
+  const cy = Math.floor((player.y + player.h - 2) / TILE);
+  for (let tx = cx0; tx <= cx1; tx++) {
+    if (tileAt(tx, cy) === '^' && player.inv <= 0) { pitDeath(); return; }
+  }
+
+  // pit
+  if (player.y > VH + 24) { pitDeath(); return; }
+
+  // candles
+  for (const cd of candles) {
+    if (cd.taken) continue;
+    if (player.x < cd.x+8 && player.x+player.w > cd.x && player.y < cd.y+8 && player.y+player.h > cd.y) {
+      cd.taken = true;
+      gainSoul(cd.x, cd.y);
+      poof(cd.x+4, cd.y+4, '#ffd75e', 5);
+    }
+  }
+
+  // checkpoints
+  for (const cp of checkpoints) {
+    if (!cp.hit && Math.abs(player.x - cp.x) < 12) {
+      cp.hit = true;
+      player.spawnX = cp.x; player.spawnY = cp.y;
+      SFX.check();
+      addPop(cp.x, cp.y - 10, 'CHECKPOINT', '#8f5cff');
+    }
+  }
+
+  // door
+  const d = doorRect;
+  if (player.x + player.w > d.x + 6 && player.x < d.x + d.w - 6 && player.y + player.h > d.y) {
+    state = 'win'; stateT = 0;
+    score += hearts * 500;
+    if (score > best) { best = score; try { localStorage.setItem('graverunner.best', String(best)); } catch(e) {} }
+    SFX.win();
+  }
+
+  // animation
+  if (!player.onGround) player.anim = -1;
+  else if (Math.abs(player.vx) > 0.2) player.anim += Math.abs(player.vx) * 0.12;
+  else player.anim = 0;
+}
+
+function updateEnemies() {
+  const px = player.x + player.w/2;
+  for (const e of enemies) {
+    if (e.dead) { e.dead++; continue; }
+    const dist = Math.abs(e.x - camX - VW/2);
+    if (e.x < camX - 48 || e.x > camX + VW + 48) {
+      if (e.type !== 'g') continue;          // ghosts stay hungry
+    }
+    e.t++;
+
+    if (e.type === 'z') {
+      e.vy = Math.min(e.vy + GRAV, MAXFALL);
+      const preVX = e.vx;
+      if (collideX(e)) e.vx = -preVX;
+      collideY(e, false, null);
+      // turn at cliff edges
+      const aheadX = e.vx < 0 ? e.x - 1 : e.x + e.w + 1;
+      const footY = Math.floor((e.y + e.h + 2) / TILE);
+      if (!isSolid(tileAt(Math.floor(aheadX/TILE), footY)) && e.vy === 0) e.vx = -e.vx;
+      if (e.y > VH + 40) e.dead = 999;
+    }
+
+    else if (e.type === 'b') {
+      if (e.mode === 0) {
+        e.y = e.sy + Math.sin(e.t * 0.05) * 2;
+        if (Math.abs(px - e.x) < 70) { e.mode = 1; e.t = 0; SFX.ghost(); }
+      } else {
+        const want = Math.sign(px - (e.x + e.w/2)) * 1.1;
+        e.vx += (want - e.vx) * 0.03;
+        e.x += e.vx;
+        e.y += Math.sin(e.t * 0.09) * 1.4 + 0.25;
+        if (e.y > 10*TILE - 8) e.y = 10*TILE - 8;
+        if (e.y < 8) e.y = 8;
+      }
+    }
+
+    else if (e.type === 'g') {
+      if (Math.abs(px - e.x) > 170) { e.t--; continue; }
+      const facingIt = (Math.sign((e.x + e.w/2) - px) === player.dir);
+      e.shy = facingIt;
+      if (!facingIt) {
+        const dx = px - (e.x + e.w/2), dy = (player.y + 4) - (e.y + e.h/2);
+        const m = Math.hypot(dx, dy) || 1;
+        e.x += (dx/m) * 0.42;
+        e.y += (dy/m) * 0.42;
+      }
+      e.y += Math.sin(e.t * 0.06) * 0.25;
+    }
+
+    // player collision
+    if (player.inv <= 0 && state === 'play' &&
+        player.x < e.x + e.w && player.x + player.w > e.x &&
+        player.y < e.y + e.h && player.y + player.h > e.y) {
+      const stompable = e.type !== 'g';
+      if (stompable && player.vy > 0.5 && (player.y + player.h) - e.y < 9) {
+        e.dead = 1;
+        player.vy = -4.6;
+        score += 200;
+        addPop(e.x, e.y - 8, '+200');
+        poof(e.x + e.w/2, e.y + e.h/2, e.type === 'z' ? '#5a8a3c' : '#3a2a52', 9);
+        SFX.stomp();
+      } else {
+        hurt(e.x + e.w/2);
+      }
+    }
+  }
+}
+
+function updateFX() {
+  particles = particles.filter(p => (p.t++ < p.life));
+  for (const p of particles) { p.x += p.vx; p.y += p.vy; p.vy += 0.12; }
+  popups = popups.filter(p => (p.t++ < 45));
+  risers = risers.filter(r => (r.t++ < 28));
+  if (shake > 0) shake--;
+  if (flashT > 0) flashT--;
+  // lightning
+  if (lightT > 0) lightT--;
+  else if (Math.random() < 0.0012) lightT = 14;
+}
+
+//------------------------------------------------ rendering
+const stars = Array.from({length:40}, () => ({
+  x: Math.random()*VW*2, y: Math.random()*80, s: Math.random() < 0.2 ? 2 : 1, tw: Math.random()*99
+}));
+const fogs = Array.from({length:6}, (_, i) => ({
+  x: Math.random()*VW*1.5, y: 120 + Math.random()*60, w: 70+Math.random()*80, sp: 0.06+Math.random()*0.1
+}));
+
+function drawBackdrop() {
+  // night sky
+  const g = ctx.createLinearGradient(0, 0, 0, VH);
+  g.addColorStop(0, '#05010d');
+  g.addColorStop(0.55, '#120826');
+  g.addColorStop(1, '#241238');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, VW, VH);
+
+  // lightning wash
+  if (lightT > 10 || (lightT > 4 && lightT < 7)) {
+    ctx.fillStyle = 'rgba(190,180,255,0.16)';
+    ctx.fillRect(0, 0, VW, VH);
+  }
+
+  // stars
+  for (const s of stars) {
+    const sx = ((s.x - camX*0.1) % (VW+20) + VW+20) % (VW+20) - 10;
+    const a = 0.4 + 0.6*Math.abs(Math.sin(frame*0.02 + s.tw));
+    ctx.fillStyle = `rgba(200,190,255,${a.toFixed(2)})`;
+    ctx.fillRect(Math.floor(sx), s.y, s.s, s.s);
+  }
+
+  // blood moon
+  const mx = 250 - camX*0.05;
+  ctx.fillStyle = '#3d0d16';
+  ctx.beginPath(); ctx.arc(mx, 38, 22, 0, 7); ctx.fill();
+  ctx.fillStyle = '#a01c28';
+  ctx.beginPath(); ctx.arc(mx, 38, 18, 0, 7); ctx.fill();
+  ctx.fillStyle = '#c23440';
+  ctx.beginPath(); ctx.arc(mx-4, 34, 13, 0, 7); ctx.fill();
+  ctx.fillStyle = '#a01c28';
+  ctx.fillRect(mx-8, 32, 4, 2); ctx.fillRect(mx+2, 40, 5, 3); ctx.fillRect(mx-2, 27, 3, 2);
+
+  // far hills
+  ctx.fillStyle = '#0c0618';
+  for (let i = -1; i < 6; i++) {
+    const hx = i*130 - (camX*0.25 % 130);
+    ctx.beginPath();
+    ctx.moveTo(hx, 150);
+    ctx.lineTo(hx+65, 96);
+    ctx.lineTo(hx+130, 150);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.fillRect(0, 148, VW, VH-148);
+
+  // near silhouette trees + fence
+  ctx.fillStyle = '#080312';
+  for (let i = -1; i < 8; i++) {
+    const tx = i*90 - (camX*0.5 % 90);
+    ctx.fillRect(tx+30, 108, 4, 52);
+    ctx.fillRect(tx+22, 112, 20, 3);
+    ctx.fillRect(tx+18, 122, 12, 3);
+    ctx.fillRect(tx+34, 118, 14, 3);
+  }
+  ctx.fillRect(0, 158, VW, VH-158);
+}
+
+function drawTiles() {
+  const x0 = Math.max(0, Math.floor(camX / TILE) - 1);
+  const x1 = Math.min(COLS-1, Math.ceil((camX + VW) / TILE) + 1);
+  for (let ty = 0; ty < ROWS; ty++) {
+    for (let tx = x0; tx <= x1; tx++) {
+      const ch = grid[ty][tx];
+      if (ch === '.') continue;
+      const dx = Math.floor(tx*TILE - camX), dy = ty*TILE;
+      switch (ch) {
+        case '#': ctx.drawImage(tGround, dx, dy); break;
+        case 'D': ctx.drawImage(tDirt, dx, dy); break;
+        case 'B': ctx.drawImage(tBrick, dx, dy); break;
+        case '?': ctx.drawImage(tSkullBlock, dx, dy); break;
+        case 'U': ctx.drawImage(tUsedBlock, dx, dy); break;
+        case '-': ctx.drawImage(tPlatform, dx, dy); break;
+        case '^': ctx.drawImage(tSpike, dx, dy); break;
+      }
+    }
+  }
+}
+
+function drawDecor() {
+  for (const d of decor) {
+    const dx = Math.floor(d.x - camX);
+    if (dx < -40 || dx > VW + 40) continue;
+    if (d.t === 'tomb') ctx.drawImage(sprTomb, dx, d.y);
+    else if (d.t === 'tomb2') ctx.drawImage(sprTomb2, dx, d.y);
+    else if (d.t === 'tree') ctx.drawImage(treeCv, dx, d.y);
+  }
+  for (const cp of checkpoints) {
+    const dx = Math.floor(cp.x - camX);
+    if (dx < -20 || dx > VW + 20) continue;
+    ctx.drawImage(cp.hit ? sprLanternOn : sprLanternOff, dx, cp.y);
+    if (cp.hit) {
+      ctx.fillStyle = 'rgba(255,200,90,0.10)';
+      ctx.beginPath(); ctx.arc(dx+8, cp.y+6, 12 + Math.sin(frame*0.1)*2, 0, 7); ctx.fill();
+    }
+  }
+  // exit door
+  const dd = Math.floor(doorRect.x - camX);
+  if (dd > -40 && dd < VW + 40) {
+    ctx.drawImage(doorCv, dd, doorRect.y);
+    ctx.fillStyle = `rgba(143,92,255,${(0.08 + 0.05*Math.sin(frame*0.08)).toFixed(3)})`;
+    ctx.beginPath(); ctx.arc(dd+16, doorRect.y+18, 22, 0, 7); ctx.fill();
+  }
+}
+
+function drawCandles() {
+  const f = (frame >> 3) & 1;
+  for (const cd of candles) {
+    if (cd.taken) continue;
+    const dx = Math.floor(cd.x - camX);
+    if (dx < -12 || dx > VW + 12) continue;
+    const bob = Math.sin(frame*0.06 + cd.t) * 1.5;
+    ctx.drawImage(f ? sprCandle1 : sprCandle2, dx, Math.floor(cd.y + bob));
+    ctx.fillStyle = 'rgba(255,190,80,0.07)';
+    ctx.beginPath(); ctx.arc(dx+3, cd.y+bob+2, 7, 0, 7); ctx.fill();
+  }
+  for (const r of risers) {
+    const dx = Math.floor(r.x - camX);
+    const dy = r.y - r.t * 0.8;
+    ctx.globalAlpha = 1 - r.t/28;
+    ctx.drawImage(sprCandle1, dx, Math.floor(dy));
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawEnemies() {
+  for (const e of enemies) {
+    if (e.dead > 22) continue;
+    const dx = Math.floor(e.x - camX);
+    if (dx < -24 || dx > VW + 24) continue;
+    if (e.dead) {                       // squash flicker
+      ctx.globalAlpha = 1 - e.dead/22;
+      if (e.type === 'z') ctx.drawImage(sprZomb1, dx-2, Math.floor(e.y)+8, 16, 8);
+      else if (e.type === 'b') ctx.drawImage(sprBat2, dx, Math.floor(e.y)+2, 16, 5);
+      ctx.globalAlpha = 1;
+      continue;
+    }
+    if (e.type === 'z') {
+      const f = (e.t >> 4) & 1;
+      const sp = e.vx > 0 ? (f ? sprZomb1 : sprZomb2) : (f ? sprZomb1L : sprZomb2L);
+      ctx.drawImage(sp, dx-2, Math.floor(e.y)-1);
+    } else if (e.type === 'b') {
+      ctx.drawImage(((e.t >> 3) & 1) ? sprBat1 : sprBat2, dx-1, Math.floor(e.y));
+    } else if (e.type === 'g') {
+      const f = (e.t >> 4) & 1;
+      const px = player.x + player.w/2;
+      const sp = (e.x + e.w/2) > px ? (f ? sprGhost1L : sprGhost2L) : (f ? sprGhost1 : sprGhost2);
+      ctx.globalAlpha = e.shy ? 0.25 : (0.78 + 0.1*Math.sin(e.t*0.1));
+      ctx.drawImage(sp, dx-1, Math.floor(e.y)-1);
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+function drawPlayer() {
+  if (state === 'gameover') return;
+  if (player.inv > 0 && (frame & 3) < 2 && state === 'play') return;   // blink
+  let sp;
+  if (state === 'dying') sp = player.dir > 0 ? sprPlayer.jump : sprPlayer.jumpL;
+  else if (!player.onGround) sp = player.dir > 0 ? sprPlayer.jump : sprPlayer.jumpL;
+  else if (Math.abs(player.vx) > 0.2) {
+    const f = (Math.floor(player.anim) & 1) ? 'run1' : 'run2';
+    sp = sprPlayer[f + (player.dir > 0 ? '' : 'L')];
+  } else sp = player.dir > 0 ? sprPlayer.idle : sprPlayer.idleL;
+  ctx.drawImage(sp, Math.floor(player.x - camX) - 3, Math.floor(player.y) - 2);
+}
+
+function drawFX() {
+  for (const p of particles) {
+    ctx.fillStyle = p.col;
+    ctx.globalAlpha = 1 - p.t/p.life;
+    ctx.fillRect(Math.floor(p.x - camX), Math.floor(p.y), 2, 2);
+  }
+  ctx.globalAlpha = 1;
+  for (const p of popups) {
+    ctx.globalAlpha = 1 - p.t/45;
+    drawText(ctx, p.txt, Math.floor(p.x - camX - textW(p.txt)/2), Math.floor(p.y - p.t*0.5), p.col);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawFog() {
+  ctx.fillStyle = 'rgba(150,140,190,0.05)';
+  for (const f of fogs) {
+    f.x += f.sp;
+    const dx = ((f.x - camX*0.7) % (VW + f.w*2) + VW + f.w*2) % (VW + f.w*2) - f.w;
+    ctx.beginPath();
+    ctx.ellipse(dx, f.y + Math.sin(frame*0.01 + f.x)*4, f.w, 14, 0, 0, 7);
+    ctx.fill();
+  }
+}
+
+function drawDarkness() {
+  // lantern glow around the player, darkness at edges
+  const px = Math.floor(player.x - camX) + 5, py = Math.floor(player.y) + 7;
+  const r = 95 + Math.sin(frame*0.15)*3 + (lightT > 0 ? 60 : 0);
+  const g = ctx.createRadialGradient(px, py, r*0.35, px, py, r);
+  g.addColorStop(0, 'rgba(4,0,12,0)');
+  g.addColorStop(1, `rgba(4,0,12,${lightT > 0 ? 0.45 : 0.78})`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, VW, VH);
+}
+
+function drawHUD() {
+  for (let i = 0; i < 3; i++)
+    ctx.drawImage(i < hearts ? sprHeart : sprHeartE, 5 + i*10, 5);
+  ctx.drawImage(sprCandle1, 5, 15);
+  drawText(ctx, 'X' + String(souls).padStart(2, '0'), 14, 16, '#e8e0d0');
+  const st = 'SCORE ' + String(score).padStart(6, '0');
+  drawText(ctx, st, VW - textW(st) - 5, 6, '#e8e0d0');
+  if (flashT > 0) {
+    ctx.fillStyle = `rgba(200,30,40,${(flashT/6*0.25).toFixed(2)})`;
+    ctx.fillRect(0, 0, VW, VH);
+  }
+}
+
+function drawTitle() {
+  drawBackdrop();
+  drawFog();
+  // big tombstone title card
+  ctx.fillStyle = 'rgba(6,2,16,0.55)';
+  ctx.fillRect(0, 0, VW, VH);
+  drawTextC(ctx, 'GRAVE', 34, '#8f5cff', 4);
+  drawTextC(ctx, 'RUNNER', 62, '#8f5cff', 4);
+  drawTextC(ctx, 'A SPOOKY 8-BIT NIGHTMARE', 96, '#7a7290');
+  const blink = (frame >> 5) & 1;
+  if (blink) drawTextC(ctx, hasTouch ? 'TAP TO BEGIN' : 'PRESS SPACE', 122, '#e8e0d0', 2);
+  drawTextC(ctx, 'STOMP ZOMBIES AND BATS', 146, '#5c5470');
+  drawTextC(ctx, 'NEVER TURN YOUR BACK ON A GHOST', 156, '#5c5470');
+  if (best > 0) drawTextC(ctx, 'BEST ' + best, 172, '#ffd75e');
+  ctx.drawImage(sprPlayer.idle, 60, 118);
+  ctx.drawImage(sprGhost1, 236, 116);
+  ctx.drawImage(sprZomb1, 130, VH-30);
+}
+
+function drawGameOver() {
+  ctx.fillStyle = 'rgba(4,0,10,0.75)';
+  ctx.fillRect(0, 0, VW, VH);
+  drawTextC(ctx, 'YOU DIED', 56, '#a01c28', 4);
+  drawTextC(ctx, 'THE GRAVEYARD KEEPS YOU', 96, '#7a7290');
+  drawTextC(ctx, 'SCORE ' + score, 112, '#e8e0d0');
+  if (best > 0) drawTextC(ctx, 'BEST ' + best, 124, '#ffd75e');
+  if ((frame >> 5) & 1) drawTextC(ctx, hasTouch ? 'TAP TO RISE AGAIN' : 'PRESS SPACE', 148, '#e8e0d0', 2);
+}
+
+function drawWin() {
+  ctx.fillStyle = 'rgba(4,0,10,0.7)';
+  ctx.fillRect(0, 0, VW, VH);
+  drawTextC(ctx, 'YOU ESCAPED', 48, '#8f5cff', 3);
+  drawTextC(ctx, 'THE SUN RISES. FOR NOW...', 84, '#7a7290');
+  drawTextC(ctx, 'SOULS ' + souls, 104, '#ffd75e');
+  drawTextC(ctx, 'SCORE ' + score, 116, '#e8e0d0');
+  if (best > 0) drawTextC(ctx, 'BEST ' + best, 128, '#ffd75e');
+  if ((frame >> 5) & 1) drawTextC(ctx, hasTouch ? 'TAP TO PLAY AGAIN' : 'PRESS SPACE', 152, '#e8e0d0', 2);
+}
+
+//------------------------------------------------ main loop
+let acc = 0, last = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  acc += Math.min(now - last, 100);
+  last = now;
+  const STEP = 1000/60;
+  let ticked = false;
+  while (acc >= STEP) { acc -= STEP; tick(); ticked = true; }
+  if (ticked) render();
+}
+
+function tick() {
+  frame++;
+  stateT++;
+  if (state === 'title') {
+    if (input.any) { input.any = false; resetRun(); state = 'play'; showControls(true); startAmbience(); }
+  } else if (state === 'play') {
+    updatePlayer();
+    updateEnemies();
+    updateFX();
+    // camera
+    const target = player.x + player.w/2 - VW*0.4;
+    camX += (target - camX) * 0.12;
+    camX = Math.max(0, Math.min(COLS*TILE - VW, camX));
+  } else if (state === 'dying') {
+    player.vy = Math.min(player.vy + GRAV, MAXFALL);
+    player.y += player.vy;
+    updateFX();
+    if (stateT > 90) {
+      state = 'gameover';
+      if (score > best) { best = score; try { localStorage.setItem('graverunner.best', String(best)); } catch(e) {} }
+      showControls(false);
+      input.any = false;
+    }
+  } else if (state === 'gameover' || state === 'win') {
+    updateFX();
+    if (stateT > 30 && input.any) {
+      input.any = false;
+      resetRun();
+      state = 'play';
+      showControls(true);
+    }
+  }
+  input.any = false;
+}
+
+function render() {
+  ctx.save();
+  if (shake > 0) ctx.translate((Math.random()*2-1)*2, (Math.random()*2-1)*2);
+
+  if (state === 'title') {
+    drawTitle();
+  } else {
+    drawBackdrop();
+    drawTiles();
+    drawDecor();
+    drawCandles();
+    drawEnemies();
+    drawPlayer();
+    drawFX();
+    drawFog();
+    drawDarkness();
+    drawHUD();
+    if (state === 'gameover') drawGameOver();
+    if (state === 'win') drawWin();
+  }
+  ctx.restore();
+
+  // blit scaled to screen
+  sctx.fillStyle = '#000';
+  sctx.fillRect(0, 0, screen.width, screen.height);
+  sctx.drawImage(view, 0, 0, VW, VH, offX, offY, VW*scale, VH*scale);
+}
+
+buildLevel();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
