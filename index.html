@@ -1134,6 +1134,9 @@ let stateT = 0;
 // the reunion photo shown after the rescue
 const endingImg = new Image();
 endingImg.src = 'ending.png';
+// illustrated title card
+const titleImg = new Image();
+titleImg.src = 'title.png';
 let score = 0, souls = 0, hearts = 3;
 let best = 0;
 try { best = parseInt(localStorage.getItem('graverunner.best') || '0', 10) || 0; } catch(e) {}
@@ -1782,12 +1785,46 @@ function drawDecor() {
   }
 }
 
-// the Grave King: a crowned, king-sized ghost
+// the Grave King: crowned spectral monarch, white beard, robe fading to wisps
+const P_KING = { C:'#ffd75e', c:'#b8912c', W:'#c8d2e6', w:'#8c9cc0',
+                 B:'#eef2f8', E:'#10182c' };
+const sprKing = makeSprite([
+"....C..C..C..C..",
+"....CCCCCCCCCC..",
+"....cCCCCCCCCc..",
+"....wWWWWWWWWw..",
+"...wWWWWWWWWWWw.",
+"...WWEEWWWWEEWW.",
+"...WWWWWWWWWWWW.",
+"...WBBWWWWWWBBW.",
+"...BBBBWWWWBBBB.",
+"....BBBBBBBBBB..",
+"....BBBBBBBBBB..",
+".....BBBBBBBB...",
+"....wWBBBBBBWw..",
+"...wWWWBBBBWWWw.",
+"..wWWWWWWWWWWWWw",
+".wWWWWWWWWWWWWWW",
+".WWWWWWWWWWWWWWW",
+".WWWWWWWWWWWWWWW",
+"..WWWWWWWWWWWWW.",
+"..wWWWWWWWWWWWw.",
+"...WWWWWWWWWWW..",
+"...WWWWWWWWWWw..",
+"....WWWWWWWWW...",
+"....wWWWWWWWw...",
+".....WWWWWWW....",
+".....wWWWWWw....",
+"......WWWWW.....",
+"......wWWWw.....",
+".......WWW......",
+"......W.W.W.....",
+".....W...W.W....",
+"......W....W...."], P_KING);
 function drawKing(x, y) {
-  ctx.drawImage(((frame >> 4) & 1) ? sprGhost1 : sprGhost2, x, y, 32, 24);
-  ctx.fillStyle = '#ffd75e';
-  ctx.fillRect(x + 10, y - 4, 12, 3);
-  ctx.fillRect(x + 10, y - 7, 2, 3); ctx.fillRect(x + 15, y - 8, 2, 4); ctx.fillRect(x + 20, y - 7, 2, 3);
+  ctx.globalAlpha = 0.92 + 0.08 * Math.sin(frame * 0.1);
+  ctx.drawImage(sprKing, x, y);
+  ctx.globalAlpha = 1;
 }
 
 function drawFireballs() {
@@ -1973,7 +2010,25 @@ function drawTutorial() {
 function drawTitle() {
   drawBackdrop();
   drawFog();
-  // big tombstone title card
+  if (titleImg.complete && titleImg.naturalWidth > 0) {
+    // illustrated card, fit by height, live sky showing at the sides
+    const s = VH / titleImg.naturalHeight;
+    const w = Math.floor(titleImg.naturalWidth * s);
+    const x = Math.floor((VW - w) / 2);
+    ctx.drawImage(titleImg, x, 0, w, VH);
+    // replace the baked-in BEST banner with the real score
+    const bx = x + Math.floor(w * 0.20), bw = Math.floor(w * 0.60);
+    const by = Math.floor(VH * 0.83), bh = Math.floor(VH * 0.15);
+    ctx.fillStyle = '#0a0718';
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = '#4a3a80';
+    ctx.fillRect(bx, by, bw, 1); ctx.fillRect(bx, by + bh - 1, bw, 1);
+    const msg = best > 0 ? 'BEST ' + best : 'GOOD LUCK, CHASE';
+    if ((frame >> 5) & 1 || best > 0)
+      drawText(ctx, msg, bx + Math.floor((bw - textW(msg)) / 2), by + Math.floor(bh / 2) - 2, '#ffd75e');
+    return;
+  }
+  // fallback if the art hasn't loaded
   ctx.fillStyle = 'rgba(6,2,16,0.55)';
   ctx.fillRect(0, 0, VW, VH);
   drawTextC(ctx, 'RUN, CHASE, RUN!', 12, '#8f5cff', 3);
@@ -2008,7 +2063,7 @@ function drawIntro() {
 
   // the Grave King glides in slowly, hangs over her... then takes her
   let kx = -100, ky = 6, grabbed = false, hovering = false;
-  const kyGrab = standTop - 30;
+  const kyGrab = standTop - 26;
   if (t >= 60) {
     const p = Math.min(1, (t - 60) / 120);
     kx = (VW + 40) - (VW + 40 - lxI) * p;
@@ -2022,9 +2077,14 @@ function drawIntro() {
     }
   }
   if (grabbed) {
-    ctx.drawImage(sprLeah, Math.floor(kx) + 8, Math.floor(ky) + 14);
     drawKing(Math.floor(kx), Math.floor(ky));
-    if (((frame >> 3) & 1)) drawText(ctx, 'HELP!', Math.floor(kx) + 6, Math.floor(ky) - 12, '#f0ecf4');
+    // Leah carried bridal-style across his arms (rotated 90°, face up)
+    ctx.save();
+    ctx.translate(Math.floor(kx) - 4, Math.floor(ky) + 29);
+    ctx.rotate(-Math.PI / 2);
+    ctx.drawImage(sprLeah, 0, 0);
+    ctx.restore();
+    if (((frame >> 3) & 1)) drawText(ctx, 'HELP!', Math.floor(kx) + 4, Math.floor(ky) - 10, '#f0ecf4');
   } else {
     ctx.drawImage(sprLeah, lxI, standTop);
     if (t >= 60) drawKing(Math.floor(kx), Math.floor(ky));
