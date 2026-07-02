@@ -170,6 +170,8 @@ Y:["101","101","010","010","010"],Z:["111","001","010","100","111"],
 "+":["000","010","111","010","000"],"'":["010","010","000","000","000"],
 ",":["000","000","000","010","100"],"?":["110","001","010","000","010"],
 "<":["001","010","100","010","001"],">":["100","010","001","010","100"],
+"(":["001","010","010","010","001"],")":["100","010","010","010","100"],
+"|":["010","010","010","010","010"],
 " ":["000","000","000","000","000"]
 };
 function drawText(c, str, x, y, color, sc=1) {
@@ -2028,18 +2030,21 @@ function drawTitle() {
     ctx.drawImage(titleImg, x, y, w, h);
     // live text, outlined for readability
     drawTextCO(ctx, 'RUN, CHASE, RUN!', 8, '#b085ff', 3);
-    drawTextCO(ctx, 'DEVELOPED BY CHASE JENNINGS', 32, '#d9cff0');
     if ((frame >> 5) & 1)
-      drawTextCO(ctx, hasTouch ? 'TAP TO BEGIN' : 'PRESS SPACE', 50, '#f6ecd0', 2);
-    drawTextCO(ctx, 'RESCUE LEAH', 70, '#f0ecf4');
-    if (best > 0) drawTextCO(ctx, 'BEST ' + best, VH - 12, '#ffd75e');
+      drawTextCO(ctx, hasTouch ? 'TAP TO BEGIN' : 'PRESS SPACE', 34, '#f6ecd0', 2);
+    drawTextCO(ctx, 'RESCUE LEAH', 54, '#f0ecf4');
+    drawTextCO(ctx, 'FIREBALLS BURN THE DEAD', 68, '#c4b8e0');
+    drawTextCO(ctx, 'NEVER TURN YOUR BACK ON A GHOST', 78, '#c4b8e0');
+    drawTextCO(ctx, 'GRAB THE MOON TO UNLEASH THE WOLF', 88, '#c4b8e0');
+    if (best > 0) drawTextCO(ctx, 'BEST ' + best, VH - 22, '#ffd75e');
+    drawTextCO(ctx, '(C) 2026 | CREATED BY CHASE JENNINGS', VH - 9, '#a89cc4');
     return;
   }
   // fallback if the art hasn't loaded
   ctx.fillStyle = 'rgba(6,2,16,0.55)';
   ctx.fillRect(0, 0, VW, VH);
   drawTextC(ctx, 'RUN, CHASE, RUN!', 12, '#8f5cff', 3);
-  drawTextC(ctx, 'DEVELOPED BY CHASE JENNINGS', 34, '#7a7290');
+  drawTextC(ctx, '(C) 2026 | CREATED BY CHASE JENNINGS', VH - 9, '#7a7290');
   const blink = (frame >> 5) & 1;
   if (blink) drawTextC(ctx, hasTouch ? 'TAP TO BEGIN' : 'PRESS SPACE', 52, '#e8e0d0', 2);
   drawTextC(ctx, 'RESCUE LEAH', 72, '#f0ecf4');
