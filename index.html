@@ -2029,13 +2029,10 @@ function drawTitle() {
     const y = -Math.floor((h - VH) * 0.35);
     ctx.drawImage(titleImg, x, y, w, h);
     // live text, outlined for readability
-    drawTextCO(ctx, 'RUN, CHASE, RUN!', 8, '#b085ff', 3);
+    drawTextCO(ctx, 'RUN, CHASE, RUN!', 20, '#b085ff', 3);
+    drawTextCO(ctx, 'SAVE LEAH', 42, '#f0ecf4');
     if ((frame >> 5) & 1)
-      drawTextCO(ctx, hasTouch ? 'TAP TO BEGIN' : 'PRESS SPACE', 34, '#f6ecd0', 2);
-    drawTextCO(ctx, 'RESCUE LEAH', 54, '#f0ecf4');
-    drawTextCO(ctx, 'FIREBALLS BURN THE DEAD', 68, '#c4b8e0');
-    drawTextCO(ctx, 'NEVER TURN YOUR BACK ON A GHOST', 78, '#c4b8e0');
-    drawTextCO(ctx, 'GRAB THE MOON TO UNLEASH THE WOLF', 88, '#c4b8e0');
+      drawTextCO(ctx, hasTouch ? 'TAP TO BEGIN' : 'PRESS SPACE', 56, '#f6ecd0', 2);
     if (best > 0) drawTextCO(ctx, 'BEST ' + best, VH - 22, '#ffd75e');
     drawTextCO(ctx, '(C) 2026 | CREATED BY CHASE JENNINGS', VH - 9, '#a89cc4');
     return;
