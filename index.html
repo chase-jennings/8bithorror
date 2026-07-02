@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#05010d">
-<title>GRAVE RUNNER &mdash; a spooky 8-bit nightmare</title>
+<title>GRAVE CHASE &mdash; a spooky 8-bit nightmare starring Chase Jennings</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   html, body {
@@ -177,45 +177,148 @@ function flipSprite(sp) {
 }
 
 //------------------------------------------------ palettes + sprites
-const P_PLAYER = { X:'#8c1428', F:'#d9e4c6', R:'#ff2a2a', O:'#1a0a12',
-                   C:'#23233a', L:'#141420', S:'#3a2417', H:'#d9e4c6' };
+// Chase Jennings, 8-bit: chestnut swept hair, short beard, tattered black
+// jacket with a skull patch. Scary clothes, friendly face.
+const P_PLAYER = { H:'#7a4e2c', h:'#9c6a3c', F:'#eac9a4', E:'#3a2414',
+                   B:'#5a3a22', O:'#2a1408', C:'#20202c', c:'#32323f',
+                   S:'#e8e4d8', P:'#15151d', T:'#4a2e1a' };
 const PLAYER_TOP = [
-"......XXXX......",
-"....XXXXXXXX....",
-"...XXXXXXXXXX...",
-"...XXFFFFFFXX...",
-"...XFFFFFFFFX...",
-"...XFRFFFFRFX...",
-"...XFFFFFFFFX...",
-"....FFFOOFFF....",
+"....HHHHHHHH....",
+"...HHhHHHHHHH...",
+"...HHHHHHHHHH...",
+"...HHFFFFFFHH...",
+"...HFFEFFEFFH...",
+"...HFFFFFFFFH...",
+"....BFFFFFFB....",
+"....BBFOOFBB....",
+".....BBBBBB.....",
 "......CCCC......",
-"....CCCCCCCC....",
-"...HCCCCCCCCH...",
-"...HCCCCCCCCH..."
+"....cCCCCCCc....",
+"...FCCSSCCCCF...",
+"...FCCCCCCCCF..."
 ];
 const sprPlayer = {
   idle: makeSprite(PLAYER_TOP.concat([
-    ".....CC..CC.....",
-    ".....LL..LL.....",
-    ".....LL..LL.....",
-    "....SSS..SSS...."]), P_PLAYER),
+    ".....PP..PP.....",
+    ".....PP..PP.....",
+    "....TTT..TTT...."]), P_PLAYER),
   run1: makeSprite(PLAYER_TOP.concat([
-    ".....CC..CC.....",
-    "....LL....LL....",
-    "...LL......LL...",
-    "..SSS......SSS.."]), P_PLAYER),
+    "....PP....PP....",
+    "...PP......PP...",
+    "..TTT......TTT.."]), P_PLAYER),
   run2: makeSprite(PLAYER_TOP.concat([
-    "......CCCC......",
-    "......LLLL......",
-    ".....LL.LL......",
-    ".....SS.SS......"]), P_PLAYER),
+    "......PPPP......",
+    ".....PP.PP......",
+    ".....TT.TT......"]), P_PLAYER),
   jump: makeSprite(PLAYER_TOP.concat([
-    ".....CC..CC.....",
-    "....LLL..LLL....",
-    "...SS......SS...",
+    "....PPP..PPP....",
+    "...TT......TT...",
     "................"]), P_PLAYER)
 };
 for (const k in sprPlayer) sprPlayer[k+'L'] = flipSprite(sprPlayer[k]);
+
+// werewolf Chase: 16x24, tall and hungry
+const P_WOLF = { F:'#5c4c3a', D:'#3b2f22', R:'#ff2a2a', W:'#e8e4d8' };
+const WOLF_TOP = [
+"...DD......DD...",
+"...DDD....DDD...",
+"....FFFFFFFF....",
+"...FFFFFFFFFF...",
+"...FRFFFFFFRF...",
+"...FFFFFFFFFF...",
+"....FFDDDDFF....",
+"....DDDDDDDD....",
+"....DWDWWDWD....",
+".....DDDDDD.....",
+"....FFFFFFFF....",
+"...FFFFFFFFFF...",
+"..FFFFFFFFFFFF..",
+"..WFFFFFFFFFFW..",
+"..WFFFFFFFFFFW..",
+"...FFFFFFFFFF...",
+"...FFFFFFFFFF...",
+"....FFFFFFFF...."
+];
+const sprWolf = {
+  idle: makeSprite(WOLF_TOP.concat([
+    "....FFF..FFF....",
+    "....FF....FF....",
+    "....FF....FF....",
+    "....FF....FF....",
+    "...WWF....FWW...",
+    "................"]), P_WOLF),
+  run1: makeSprite(WOLF_TOP.concat([
+    "....FFF..FFF....",
+    "...FFF....FFF...",
+    "..FF........FF..",
+    ".FF..........FF.",
+    "WWF..........FWW",
+    "................"]), P_WOLF),
+  run2: makeSprite(WOLF_TOP.concat([
+    "....FFF..FFF....",
+    ".....FF..FF.....",
+    ".....FF..FF.....",
+    "....FFF..FFF....",
+    "....WW....WW....",
+    "................"]), P_WOLF),
+  jump: makeSprite(WOLF_TOP.concat([
+    "....FFF..FFF....",
+    "...FFF....FFF...",
+    "..WW........WW..",
+    "................",
+    "................",
+    "................"]), P_WOLF)
+};
+for (const k in sprWolf) sprWolf[k+'L'] = flipSprite(sprWolf[k]);
+
+// black german shepherd, faithful and loud
+const P_DOG = { K:'#191922', S:'#2b2b3a', E:'#c8a028', R:'#c03030', T:'#8a6a3c' };
+const DOG_TOP = [
+"............K.K.",
+"............KKK.",
+"..K.........KKEK",
+"..KK......KKKKKK",
+"...KK..KKKKKKKKR",
+"....KKSSKKKKKKK.",
+"....KKSSKKKKKK..",
+"....KKKKKKKKK...",
+"....KKKKKKKKK..."
+];
+const sprDog1 = makeSprite(DOG_TOP.concat([
+  "....KK...KKK....",
+  "...KK.....KK....",
+  "...TK......KK..."]), P_DOG);
+const sprDog2 = makeSprite(DOG_TOP.concat([
+  ".....KK..KK.....",
+  ".....KK...KK....",
+  ".....TK...TK...."]), P_DOG);
+const sprDog1L = flipSprite(sprDog1), sprDog2L = flipSprite(sprDog2);
+
+// power-ups
+const sprMoon = makeSprite([
+"....MMMM....",
+"...MMMMMM...",
+"..MMMM......",
+".MMMM.......",
+".MMM........",
+".MMM........",
+".MMM........",
+".MMMM.......",
+"..MMMM......",
+"...MMMMMM...",
+"....MMMM....",
+"............"], { M:'#d8d4e8' }, 12);
+const sprCross = makeSprite([
+".....GG.....",
+".....GG.....",
+"...GGGGGG...",
+"...GGGGGG...",
+".....GG.....",
+".....GG.....",
+".....GG.....",
+".....GG.....",
+".....gg.....",
+"............"], { G:'#ffd75e', g:'#b8912c' }, 12);
 
 const P_ZOMB = { G:'#5a8a3c', D:'#2e4d3a', W:'#e8e8c8', R:'#a02020', M:'#1a2a14' };
 const ZOMB_TOP = [
@@ -482,7 +585,7 @@ const sprLanternOff = makeLantern(false), sprLanternOn = makeLantern(true);
 //------------------------------------------------ level
 const COLS = 192, ROWS = 12;
 let grid;
-const enemies = [], candles = [], decor = [], checkpoints = [];
+const enemies = [], candles = [], decor = [], checkpoints = [], powerups = [];
 let doorRect = null;
 
 function set(x, y, ch) { if (x>=0 && x<COLS && y>=0 && y<ROWS) grid[y][x] = ch; }
@@ -497,10 +600,12 @@ function ghost(x, y) { enemies.push({type:'g', x:x*TILE, y:y*TILE, w:13, h:11, v
 function tomb(x, v) { decor.push({t: v ? 'tomb2':'tomb', x:x*TILE, y:9*TILE}); }
 function tree(x) { decor.push({t:'tree', x:x*TILE, y:9*TILE-32}); }
 function checkpoint(x) { checkpoints.push({x:x*TILE, y:8*TILE, hit:false}); }
+function pow(type, x, y) { powerups.push({type, x:x*TILE+2, y:y*TILE+2, taken:false, t:Math.random()*99}); }
 
 function buildLevel() {
   grid = Array.from({length: ROWS}, () => Array(COLS).fill('.'));
-  enemies.length = 0; candles.length = 0; decor.length = 0; checkpoints.length = 0;
+  enemies.length = 0; candles.length = 0; decor.length = 0;
+  checkpoints.length = 0; powerups.length = 0;
 
   // -- opening stretch: learn to run & jump
   ground(0, 18);
@@ -527,11 +632,12 @@ function buildLevel() {
 
   // -- long gap with sky bones
   platform(54, 55, 6);
-  candle(54, 4); candle(55, 4);
+  candle(54, 4); pow('wolf', 55, 4);
 
   // -- graveyard row + first ghost + spikes
   ground(57, 75);
   tomb(59); tomb(61, 1); tomb(63);
+  pow('cross', 61, 8);
   ghost(64, 4);
   spikes(66, 68);
   platform(65, 69, 6);
@@ -546,7 +652,7 @@ function buildLevel() {
   tomb(91, 1);
 
   platform(97, 98, 7);
-  candle(97, 5); candle(98, 5);
+  candle(98, 5); pow('heart', 97, 5);
 
   // -- pyramid hill
   ground(100, 118);
@@ -564,14 +670,17 @@ function buildLevel() {
   platform(126, 133, 5);
   candle(128, 3); candle(129, 3); candle(130, 3); candle(131, 3);
   zombie(136); tomb(138, 1);
+  pow('heart', 134, 8);
 
   platform(142, 143, 7);
+  pow('wolf', 142, 5);
 
   // -- final gauntlet
   ground(145, 175);
   checkpoint(147);
   tomb(148); tree(151); tomb(153, 1); tomb(157); tree(162); tomb(164, 1);
   zombie(150); bat(152, 2); zombie(155); bat(158, 3); zombie(160); ghost(163, 3); zombie(166);
+  pow('cross', 159, 8);
   candle(168, 8); candle(169, 8); candle(170, 8);
   set(171,9,'#'); fill(172,8,172,9,'#'); fill(173,7,173,9,'#');
 
@@ -632,8 +741,50 @@ const SFX = {
   check()   { tone(440, 440, 0.09, 'square', 0.05); tone(660, 660, 0.12, 'square', 0.05, 0.09); },
   heart()   { tone(520, 780, 0.15, 'triangle', 0.07); },
   win()     { [392, 523, 659, 784].forEach((f, i) => tone(f, f, 0.16, 'square', 0.06, i*0.13)); },
-  ghost()   { tone(600, 200, 0.5, 'sine', 0.04); }
+  ghost()   { tone(600, 200, 0.5, 'sine', 0.04); },
+  howl()    { tone(220, 470, 0.4, 'sine', 0.08); tone(470, 320, 0.7, 'sine', 0.06, 0.4); },
+  bark()    { tone(480, 210, 0.07, 'square', 0.09); tone(540, 230, 0.07, 'square', 0.09, 0.11); },
+  holy()    { [523, 659, 784].forEach((f, i) => tone(f, f, 0.13, 'triangle', 0.05, i*0.08)); }
 };
+
+//------------------------------------------------ music: 8-bit graveyard waltz
+// D-minor step sequencer, scheduled ahead on a WebAudio clock. No files.
+const M2F = m => 440 * Math.pow(2, (m - 69) / 12);
+const __ = null;
+const LEAD = [
+  74,__,__,77,__,__,76,__,  73,__,__,__,74,__,__,__,
+  77,__,__,81,__,__,80,__,  79,__,77,__,76,__,73,__,
+  62,__,__,65,__,__,64,__,  61,__,__,__,62,__,__,__,
+  65,__,64,__,62,__,61,__,  57,__,__,__,__,__,73,__
+];
+const BASSLINE = [
+  38,38,38,38, 34,34,34,34, 31,31,31,31, 33,33,37,33,
+  38,38,38,38, 34,34,34,34, 31,31,31,31, 33,33,37,33
+];
+const STEP_S = 0.326;   // eighth notes @ ~92 bpm
+const music = { timer:null, next:0, step:0 };
+function startMusic() {
+  const a = audio(); if (!a || music.timer) return;
+  music.next = a.currentTime + 0.1;
+  music.step = 0;
+  music.timer = setInterval(() => {
+    const ac = audio(); if (!ac) return;
+    while (music.next < ac.currentTime + 0.2) {
+      const s = music.step, dt = Math.max(0, music.next - ac.currentTime);
+      if (state === 'play') {
+        const L = LEAD[s % 64];
+        if (L != null) tone(M2F(L), M2F(L), 0.30, 'square', 0.026, dt);
+        if (s % 2 === 0) {
+          const B = BASSLINE[(s >> 1) % 32];
+          tone(M2F(B), M2F(B), 0.30, 'triangle', 0.05, dt);
+        }
+        if (s % 8 === 4) noise(0.03, 0.012, dt);
+      }
+      music.next += STEP_S;
+      music.step++;
+    }
+  }, 60);
+}
 function startAmbience() {
   const a = audio(); if (!a || ambOn) return;
   ambOn = true;
@@ -707,6 +858,8 @@ const player = {
   dir:1, onGround:false, coyote:0, jbuf:0,
   anim:0, inv:0, spawnX:0, spawnY:0
 };
+const dog = { x:0, y:0, vx:0, vy:0, w:13, h:10, dir:1, onGround:false, anim:0, barkT:0, popT:0 };
+let wolfT = 0, crossT = 0, pendingWolf = false;
 let camX = 0;
 let particles = [], popups = [], risers = [];
 let shake = 0, flashT = 0, lightT = 0;
@@ -715,6 +868,7 @@ let frame = 0;
 function resetRun() {
   buildLevel();
   score = 0; souls = 0; hearts = 3;
+  wolfT = 0; crossT = 0; pendingWolf = false; player.h = 14;
   player.spawnX = 2*TILE; player.spawnY = 8*TILE;
   respawn();
   camX = 0;
@@ -724,6 +878,22 @@ function respawn() {
   player.x = player.spawnX; player.y = player.spawnY;
   player.vx = 0; player.vy = 0; player.dir = 1;
   player.inv = 90; player.onGround = false;
+  if (wolfT > 0) toHuman();
+  dog.x = player.spawnX - 16; dog.y = player.spawnY + 4;
+  dog.vx = 0; dog.vy = 0; dog.dir = 1;
+}
+function toWolf() {
+  player.h = 20; player.y -= 6;
+  wolfT = 720; pendingWolf = false;
+  shake = 5;
+  poof(player.x + 5, player.y + 10, '#5c4c3a', 14);
+  addPop(player.x + 5, player.y - 12, 'FULL MOON!', '#d8d4e8');
+  SFX.howl();
+}
+function toHuman() {
+  player.h = 14; player.y += 6;
+  wolfT = 0;
+  poof(player.x + 5, player.y + 7, '#d8d4e8', 8);
 }
 function addPop(x, y, txt, col='#ffd75e') { popups.push({x, y, txt, col, t:0}); }
 function poof(x, y, col, n=8) {
@@ -819,12 +989,27 @@ function bumpBlock(tx, ty, ch) {
 
 function updatePlayer() {
   pollKeys();
+  // werewolf timers
+  if (pendingWolf) {
+    // wait until there's headroom for the taller body
+    let clear = true;
+    const x0 = Math.floor((player.x+1)/TILE), x1 = Math.floor((player.x+player.w-1)/TILE);
+    const yTop = Math.floor((player.y - 7) / TILE);
+    for (let tx = x0; tx <= x1; tx++) if (isSolid(tileAt(tx, yTop))) clear = false;
+    if (clear) toWolf();
+  }
+  if (wolfT > 0 && --wolfT === 0) toHuman();
+  if (crossT > 0) crossT--;
+  const isWolf = wolfT > 0;
+  const maxSpd = isWolf ? 2.35 : MOVE_MAX;
+  const jumpV = isWolf ? -6.2 : JUMP_V;
+
   // horizontal
   if (input.l) { player.vx -= MOVE_ACC; player.dir = -1; }
   if (input.r) { player.vx += MOVE_ACC; player.dir = 1; }
   if (!input.l && !input.r) player.vx *= FRICTION;
   if (Math.abs(player.vx) < 0.05) player.vx = 0;
-  player.vx = Math.max(-MOVE_MAX, Math.min(MOVE_MAX, player.vx));
+  player.vx = Math.max(-maxSpd, Math.min(maxSpd, player.vx));
 
   // jump buffering + coyote
   if (input.jump) { player.jbuf = JBUFFER; input.jump = false; }
@@ -832,12 +1017,12 @@ function updatePlayer() {
   if (player.onGround) player.coyote = COYOTE;
   else if (player.coyote > 0) player.coyote--;
   if (player.jbuf > 0 && player.coyote > 0) {
-    player.vy = JUMP_V;
+    player.vy = jumpV;
     player.coyote = 0; player.jbuf = 0;
     player.onGround = false;
     SFX.jump();
   }
-  if (!input.jumpHeld && player.vy < JUMP_V * JUMP_CUT) player.vy = JUMP_V * JUMP_CUT;
+  if (!input.jumpHeld && player.vy < jumpV * JUMP_CUT) player.vy = jumpV * JUMP_CUT;
 
   player.vy = Math.min(player.vy + GRAV, MAXFALL);
 
@@ -880,6 +1065,26 @@ function updatePlayer() {
       cd.taken = true;
       gainSoul(cd.x, cd.y);
       poof(cd.x+4, cd.y+4, '#ffd75e', 5);
+    }
+  }
+
+  // power-ups
+  for (const pu of powerups) {
+    if (pu.taken) continue;
+    if (player.x < pu.x+12 && player.x+player.w > pu.x && player.y < pu.y+12 && player.y+player.h > pu.y) {
+      pu.taken = true;
+      if (pu.type === 'wolf') {
+        if (wolfT > 0) { wolfT = 720; SFX.howl(); }
+        else pendingWolf = true;
+      } else if (pu.type === 'cross') {
+        crossT = 600;
+        addPop(pu.x+6, pu.y-6, 'BEGONE!', '#ffd75e');
+        SFX.holy();
+      } else if (pu.type === 'heart') {
+        if (hearts < 3) { hearts++; addPop(pu.x+4, pu.y-6, '+HEART', '#e02848'); SFX.heart(); }
+        else { score += 500; addPop(pu.x+4, pu.y-6, '+500'); SFX.collect(); }
+      }
+      poof(pu.x+6, pu.y+6, '#ffd75e', 6);
     }
   }
 
@@ -946,21 +1151,40 @@ function updateEnemies() {
 
     else if (e.type === 'g') {
       if (Math.abs(px - e.x) > 170) { e.t--; continue; }
-      const facingIt = (Math.sign((e.x + e.w/2) - px) === player.dir);
-      e.shy = facingIt;
-      if (!facingIt) {
-        const dx = px - (e.x + e.w/2), dy = (player.y + 4) - (e.y + e.h/2);
-        const m = Math.hypot(dx, dy) || 1;
-        e.x += (dx/m) * 0.42;
-        e.y += (dy/m) * 0.42;
+      if (crossT > 0) {
+        // holy ward: the ghost flees, eyes averted
+        e.shy = false;
+        const dx = (e.x + e.w/2) - px;
+        e.x += Math.sign(dx || 1) * 0.6;
+        e.y += Math.sin(e.t * 0.06) * 0.25;
+      } else {
+        const facingIt = (Math.sign((e.x + e.w/2) - px) === player.dir);
+        e.shy = facingIt;
+        if (!facingIt) {
+          const dx = px - (e.x + e.w/2), dy = (player.y + 4) - (e.y + e.h/2);
+          const m = Math.hypot(dx, dy) || 1;
+          e.x += (dx/m) * 0.42;
+          e.y += (dy/m) * 0.42;
+        }
+        e.y += Math.sin(e.t * 0.06) * 0.25;
       }
-      e.y += Math.sin(e.t * 0.06) * 0.25;
     }
 
     // player collision
-    if (player.inv <= 0 && state === 'play' &&
+    if (state === 'play' &&
         player.x < e.x + e.w && player.x + player.w > e.x &&
         player.y < e.y + e.h && player.y + player.h > e.y) {
+      if (wolfT > 0) {
+        // werewolf Chase shreds everything, even ghosts
+        e.dead = 1;
+        score += 200;
+        addPop(e.x, e.y - 8, '+200');
+        poof(e.x + e.w/2, e.y + e.h/2, e.type === 'g' ? '#dfe8f4' : '#a01c28', 12);
+        SFX.stomp();
+        continue;
+      }
+      if (player.inv > 0) continue;
+      if (e.type === 'g' && crossT > 0) continue;   // protected
       const stompable = e.type !== 'g';
       if (stompable && player.vy > 0.5 && (player.y + player.h) - e.y < 9) {
         e.dead = 1;
@@ -971,6 +1195,63 @@ function updateEnemies() {
         SFX.stomp();
       } else {
         hurt(e.x + e.w/2);
+      }
+    }
+  }
+}
+
+function updateDog() {
+  // trot along behind Chase
+  const target = player.x - player.dir * 18;
+  const dx = target - dog.x;
+  if (Math.abs(dx) > 3) {
+    dog.vx += Math.sign(dx) * 0.28;
+    dog.dir = Math.sign(dx);
+  } else dog.vx *= 0.6;
+  dog.vx = Math.max(-2.2, Math.min(2.2, dog.vx));
+  dog.vy = Math.min(dog.vy + GRAV, MAXFALL);
+
+  const blocked = collideX(dog);
+  collideY(dog, true, null);
+  // grounded check
+  const fy = Math.floor((dog.y + dog.h + 2) / TILE);
+  let grounded = false;
+  for (let tx = Math.floor((dog.x+1)/TILE); tx <= Math.floor((dog.x+dog.w-1)/TILE); tx++) {
+    const ch = tileAt(tx, fy);
+    if (isSolid(ch) || ch === '-') grounded = true;
+  }
+  dog.onGround = grounded;
+
+  // hop over walls, gaps, and up to a jumping owner
+  if (grounded) {
+    const aheadX = dog.x + dog.w/2 + Math.sign(dog.vx) * 12;
+    const gapAhead = Math.abs(dog.vx) > 0.4 &&
+      !isSolid(tileAt(Math.floor(aheadX/TILE), fy)) &&
+      tileAt(Math.floor(aheadX/TILE), fy) !== '-';
+    const ownerAbove = !player.onGround && player.y < dog.y - 14 && Math.abs(dx) < 50;
+    if (blocked || (gapAhead && Math.abs(dx) > 10) || ownerAbove) dog.vy = -5.1;
+  }
+
+  // lost? the pack reforms
+  if (Math.abs(player.x - dog.x) > 150 || dog.y > VH + 40) {
+    poof(dog.x + 6, dog.y + 5, '#191922', 6);
+    dog.x = player.x - player.dir * 12;
+    dog.y = player.y - 6;
+    dog.vx = 0; dog.vy = 0;
+  }
+
+  dog.anim += Math.abs(dog.vx) * 0.14;
+
+  // a good dog smells ghosts you can't see
+  if (dog.barkT > 0) dog.barkT--;
+  if (dog.popT > 0) dog.popT--;
+  if (dog.barkT <= 0 && crossT <= 0) {
+    for (const e of enemies) {
+      if (e.type === 'g' && !e.dead && !e.shy &&
+          Math.abs(e.x - player.x) < 140 && Math.abs(e.x - player.x) > 8) {
+        SFX.bark();
+        dog.barkT = 110; dog.popT = 40;
+        break;
       }
     }
   }
@@ -1119,6 +1400,30 @@ function drawCandles() {
     ctx.drawImage(sprCandle1, dx, Math.floor(dy));
     ctx.globalAlpha = 1;
   }
+  // power-ups
+  for (const pu of powerups) {
+    if (pu.taken) continue;
+    const dx = Math.floor(pu.x - camX);
+    if (dx < -16 || dx > VW + 16) continue;
+    const bob = Math.sin(frame*0.07 + pu.t) * 2;
+    const sp = pu.type === 'wolf' ? sprMoon : pu.type === 'cross' ? sprCross : sprHeart;
+    const glow = pu.type === 'wolf' ? 'rgba(216,212,232,0.10)' :
+                 pu.type === 'cross' ? 'rgba(255,215,94,0.10)' : 'rgba(224,40,72,0.10)';
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(dx+6, pu.y+bob+6, 10 + Math.sin(frame*0.12)*2, 0, 7); ctx.fill();
+    ctx.drawImage(sp, dx, Math.floor(pu.y + bob));
+  }
+}
+
+function drawDog() {
+  const dx = Math.floor(dog.x - camX) - 1;
+  if (dx < -20 || dx > VW + 20) return;
+  const moving = Math.abs(dog.vx) > 0.3;
+  const f = moving ? ((Math.floor(dog.anim) & 1) ? 1 : 2) : 2;
+  const right = dog.dir >= 0;
+  const sp = f === 1 ? (right ? sprDog1 : sprDog1L) : (right ? sprDog2 : sprDog2L);
+  ctx.drawImage(sp, dx, Math.floor(dog.y) - 2);
+  if (dog.popT > 0) drawText(ctx, '!', dx + 7, Math.floor(dog.y) - 10, '#ff5a5a');
 }
 
 function drawEnemies() {
@@ -1153,14 +1458,22 @@ function drawEnemies() {
 function drawPlayer() {
   if (state === 'gameover') return;
   if (player.inv > 0 && (frame & 3) < 2 && state === 'play') return;   // blink
-  let sp;
-  if (state === 'dying') sp = player.dir > 0 ? sprPlayer.jump : sprPlayer.jumpL;
-  else if (!player.onGround) sp = player.dir > 0 ? sprPlayer.jump : sprPlayer.jumpL;
-  else if (Math.abs(player.vx) > 0.2) {
-    const f = (Math.floor(player.anim) & 1) ? 'run1' : 'run2';
-    sp = sprPlayer[f + (player.dir > 0 ? '' : 'L')];
-  } else sp = player.dir > 0 ? sprPlayer.idle : sprPlayer.idleL;
-  ctx.drawImage(sp, Math.floor(player.x - camX) - 3, Math.floor(player.y) - 2);
+  const isWolf = wolfT > 0;
+  const SHEET = isWolf ? sprWolf : sprPlayer;
+  let key;
+  if (state === 'dying' || !player.onGround) key = 'jump';
+  else if (Math.abs(player.vx) > 0.2) key = (Math.floor(player.anim) & 1) ? 'run1' : 'run2';
+  else key = 'idle';
+  const sp = SHEET[key + (player.dir > 0 ? '' : 'L')];
+  if (crossT > 0) {   // holy aura
+    ctx.fillStyle = `rgba(255,215,94,${(0.06 + 0.04*Math.sin(frame*0.2)).toFixed(3)})`;
+    ctx.beginPath();
+    ctx.arc(Math.floor(player.x - camX) + 5, Math.floor(player.y) + 7, 22, 0, 7);
+    ctx.fill();
+  }
+  if (isWolf && wolfT < 100 && (frame & 7) < 3) ctx.globalAlpha = 0.5;   // wearing off
+  ctx.drawImage(sp, Math.floor(player.x - camX) - 3, Math.floor(player.y) - (isWolf ? 3 : 2));
+  ctx.globalAlpha = 1;
 }
 
 function drawFX() {
@@ -1206,6 +1519,18 @@ function drawHUD() {
   drawText(ctx, 'X' + String(souls).padStart(2, '0'), 14, 16, '#e8e0d0');
   const st = 'SCORE ' + String(score).padStart(6, '0');
   drawText(ctx, st, VW - textW(st) - 5, 6, '#e8e0d0');
+  let barY = 26;
+  if (wolfT > 0) {
+    drawText(ctx, 'WOLF', 5, barY, '#d8d4e8');
+    ctx.fillStyle = '#3a3448'; ctx.fillRect(23, barY + 1, 30, 3);
+    ctx.fillStyle = '#d8d4e8'; ctx.fillRect(23, barY + 1, Math.ceil(30 * wolfT / 720), 3);
+    barY += 8;
+  }
+  if (crossT > 0) {
+    drawText(ctx, 'HOLY', 5, barY, '#ffd75e');
+    ctx.fillStyle = '#3a3448'; ctx.fillRect(23, barY + 1, 30, 3);
+    ctx.fillStyle = '#ffd75e'; ctx.fillRect(23, barY + 1, Math.ceil(30 * crossT / 600), 3);
+  }
   if (flashT > 0) {
     ctx.fillStyle = `rgba(200,30,40,${(flashT/6*0.25).toFixed(2)})`;
     ctx.fillRect(0, 0, VW, VH);
@@ -1218,17 +1543,21 @@ function drawTitle() {
   // big tombstone title card
   ctx.fillStyle = 'rgba(6,2,16,0.55)';
   ctx.fillRect(0, 0, VW, VH);
-  drawTextC(ctx, 'GRAVE', 34, '#8f5cff', 4);
-  drawTextC(ctx, 'RUNNER', 62, '#8f5cff', 4);
-  drawTextC(ctx, 'A SPOOKY 8-BIT NIGHTMARE', 96, '#7a7290');
+  drawTextC(ctx, 'GRAVE', 30, '#8f5cff', 4);
+  drawTextC(ctx, 'CHASE', 58, '#8f5cff', 4);
+  drawTextC(ctx, 'STARRING CHASE JENNINGS', 90, '#e8e0d0');
+  drawTextC(ctx, 'AND HIS FAITHFUL HOUND', 100, '#7a7290');
   const blink = (frame >> 5) & 1;
-  if (blink) drawTextC(ctx, hasTouch ? 'TAP TO BEGIN' : 'PRESS SPACE', 122, '#e8e0d0', 2);
-  drawTextC(ctx, 'STOMP ZOMBIES AND BATS', 146, '#5c5470');
-  drawTextC(ctx, 'NEVER TURN YOUR BACK ON A GHOST', 156, '#5c5470');
-  if (best > 0) drawTextC(ctx, 'BEST ' + best, 172, '#ffd75e');
-  ctx.drawImage(sprPlayer.idle, 60, 118);
-  ctx.drawImage(sprGhost1, 236, 116);
-  ctx.drawImage(sprZomb1, 130, VH-30);
+  if (blink) drawTextC(ctx, hasTouch ? 'TAP TO BEGIN' : 'PRESS SPACE', 120, '#e8e0d0', 2);
+  drawTextC(ctx, 'STOMP ZOMBIES AND BATS', 142, '#5c5470');
+  drawTextC(ctx, 'NEVER TURN YOUR BACK ON A GHOST', 152, '#5c5470');
+  drawTextC(ctx, 'GRAB THE MOON TO UNLEASH THE WOLF', 162, '#5c5470');
+  if (best > 0) drawTextC(ctx, 'BEST ' + best, 176, '#ffd75e');
+  ctx.drawImage(sprPlayer.idle, 52, 114);
+  ctx.drawImage(sprDog1, 70, 118);
+  ctx.drawImage(sprGhost1, 240, 114);
+  ctx.drawImage(sprWolf.idle, 20, VH-40);
+  ctx.drawImage(sprZomb1L, 284, VH-46);
 }
 
 function drawGameOver() {
@@ -1268,9 +1597,10 @@ function tick() {
   frame++;
   stateT++;
   if (state === 'title') {
-    if (input.any) { input.any = false; resetRun(); state = 'play'; showControls(true); startAmbience(); }
+    if (input.any) { input.any = false; resetRun(); state = 'play'; showControls(true); startAmbience(); startMusic(); }
   } else if (state === 'play') {
     updatePlayer();
+    updateDog();
     updateEnemies();
     updateFX();
     // camera
@@ -1311,6 +1641,7 @@ function render() {
     drawDecor();
     drawCandles();
     drawEnemies();
+    drawDog();
     drawPlayer();
     drawFX();
     drawFog();
